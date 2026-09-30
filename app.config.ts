@@ -1,0 +1,55 @@
+import type { ConfigContext, ExpoConfig } from 'expo/config';
+
+function hasPlugin(plugins: ExpoConfig['plugins'], name: string) {
+  return plugins?.some((plugin) => plugin === name || (Array.isArray(plugin) && plugin[0] === name));
+}
+
+export default ({ config }: ConfigContext): ExpoConfig => {
+  const plugins = [...(config.plugins ?? [])];
+  const mapsKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
+
+  if (!hasPlugin(plugins, 'expo-image-picker')) {
+    plugins.push([
+      'expo-image-picker',
+      {
+        photosPermission: 'Allow CC World to access your photos.',
+      },
+    ]);
+  }
+
+  if (!hasPlugin(plugins, 'expo-location')) {
+    plugins.push([
+      'expo-location',
+      {
+        locationWhenInUsePermission: 'Allow CC World to use your location while you are using the app.',
+      },
+    ]);
+  }
+
+  if (!hasPlugin(plugins, 'expo-notifications')) {
+    plugins.push([
+      'expo-notifications',
+      {
+        color: '#051229',
+      },
+    ]);
+  }
+
+  return {
+    ...config,
+    name: config.name ?? 'cc-world',
+    slug: config.slug ?? 'cc-world',
+    ios: {
+      ...config.ios,
+      usesAppleSignIn: true,
+    },
+    android: {
+      ...config.android,
+      config: {
+        ...config.android?.config,
+        ...(mapsKey ? { googleMaps: { apiKey: mapsKey } } : {}),
+      },
+    },
+    plugins,
+  };
+};
