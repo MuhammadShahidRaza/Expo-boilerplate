@@ -6,7 +6,7 @@ import { changeAppLanguage } from '@/i18n';
 export function useTranslation() {
   const { t, i18n } = useI18nTranslation();
   const language: LanguageCode = isLanguageCode(i18n.language) ? i18n.language : 'en';
-  const isRTL = language === 'ar';
+  const isRTL = false;
 
   return {
     t,

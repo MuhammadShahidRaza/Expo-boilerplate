@@ -1,79 +1,76 @@
 import { useState } from 'react';
-import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { Pressable, View } from 'react-native';
+import { Alert, Pressable, View } from 'react-native';
 
 import { Button } from '@/components/button';
 import { Screen } from '@/components/screen';
 import { TextField } from '@/components/text-field';
 import { ThemedText } from '@/components/themed-text';
+import { Avatar } from '@/components/ui/avatar';
+import { ScreenHeader } from '@/components/ui/screen-header';
 import { useSession } from '@/context/session-context';
 import { useImagePicker } from '@/hooks/use-image-picker';
-import { useTheme } from '@/hooks/use-theme';
 import { useTranslation } from '@/hooks/use-translation';
-import { radius, spacing } from '@/theme';
-
-function isEmail(value: string) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
-}
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { setBio } from '@/store/slices/world';
+import { spacing } from '@/theme';
 
 export function EditProfileScreen() {
   const { t } = useTranslation();
-  const { colors } = useTheme();
   const { user, updateProfile } = useSession();
   const { pickImage } = useImagePicker();
+  const dispatch = useAppDispatch();
+  const storedBio = useAppSelector((state) => state.world.bio);
   const [fullName, setFullName] = useState(user?.fullName ?? '');
-  const [email, setEmail] = useState(user?.email ?? '');
-  const [avatarUri, setAvatarUri] = useState(user?.avatarUri ?? null);
+  const [bio, setBioValue] = useState(storedBio);
+  const [avatarUri, setAvatarUri] = useState<string | null>(user?.avatarUri ?? null);
   const [nameError, setNameError] = useState('');
-  const [emailError, setEmailError] = useState('');
-  const [photoError, setPhotoError] = useState('');
 
   async function onPickPhoto() {
-    setPhotoError('');
     const result = await pickImage();
     if (result.status === 'ok') setAvatarUri(result.uri);
-    if (result.status === 'denied') setPhotoError(t('common.permissionDenied'));
   }
 
-  async function onSubmit() {
-    const nextNameError = fullName.trim() ? '' : t('common.nameRequired');
-    const nextEmailError = !email.trim()
-      ? t('common.emailRequired')
-      : isEmail(email)
-        ? ''
-        : t('common.invalidEmail');
-    setNameError(nextNameError);
-    setEmailError(nextEmailError);
-    if (nextNameError || nextEmailError) return;
-    await updateProfile({ fullName, email, avatarUri });
+  async function onSave() {
+    if (fullName.trim().length < 2) {
+      setNameError(t('validation.nameRequired'));
+      return;
+    }
+    setNameError('');
+    await updateProfile({
+      fullName: fullName.trim(),
+      email: user?.email ?? '',
+      avatarUri,
+    });
+    dispatch(setBio(bio));
+    Alert.alert(t('common.profileUpdated'));
     router.back();
   }
 
   return (
-    <Screen>
+    <Screen keyboard>
+      <ScreenHeader
+        title={t('common.editProfile')}
+        right={
+          <View style={{ width: 96 }}>
+            <Button
+              title={t('common.save')}
+              variant="gold"
+              onPress={() => void onSave()}
+              style={{ alignSelf: 'flex-end', minHeight: 40, paddingHorizontal: 16, width: undefined }}
+            />
+          </View>
+        }
+      />
+
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={t('common.choosePhoto')}
         onPress={() => void onPickPhoto()}
-        style={{ alignSelf: 'flex-start', alignItems: 'center', gap: spacing.xs }}>
-        <View
-          style={{
-            width: 72,
-            height: 72,
-            borderRadius: radius.full,
-            overflow: 'hidden',
-            backgroundColor: colors.backgroundElement,
-          }}>
-          {avatarUri ? <Image source={{ uri: avatarUri }} style={{ width: 72, height: 72 }} /> : null}
-        </View>
-        <ThemedText variant="caption">{t('common.choosePhoto')}</ThemedText>
+        style={{ alignSelf: 'center', marginVertical: spacing.sm }}>
+        <Avatar source={avatarUri || 'portrait'} size={104} badgeIcon="camera" ring />
       </Pressable>
-      {photoError ? (
-        <ThemedText variant="caption" themeColor="error">
-          {photoError}
-        </ThemedText>
-      ) : null}
+
       <TextField
         label={t('common.fullName')}
         value={fullName}
@@ -82,14 +79,11 @@ export function EditProfileScreen() {
         error={nameError}
       />
       <TextField
-        label={t('common.email')}
-        value={email}
-        onChangeText={setEmail}
-        autoCapitalize="none"
-        keyboardType="email-address"
-        error={emailError}
+        label={t('profile.bioLabel')}
+        value={bio}
+        onChangeText={setBioValue}
+        multiline
       />
-      <Button title={t('common.save')} onPress={() => void onSubmit()} />
     </Screen>
   );
 }

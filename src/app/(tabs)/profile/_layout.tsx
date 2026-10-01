@@ -1,7 +1,5 @@
-import { TabStack } from '@/components/tab-stack';
-import { useTranslation } from '@/hooks/use-translation';
+import { Stack } from 'expo-router/stack';
 
 export default function ProfileLayout() {
-  const { t } = useTranslation();
-  return <TabStack title={t('tabs.profile')} />;
+  return <Stack screenOptions={{ headerShown: false }} />;
 }

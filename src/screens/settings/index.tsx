@@ -1,64 +1,120 @@
-import { useState } from 'react';
+import { Alert, Pressable, View } from 'react-native';
 import { router } from 'expo-router';
-import { View } from 'react-native';
 
-import { GroupedList, GroupedRow } from '@/components/grouped-list';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
-import { usePushNotifications } from '@/hooks/use-push-notifications';
+import { Avatar } from '@/components/ui/avatar';
+import { Card } from '@/components/ui/card';
+import { Icon, type IconName } from '@/components/ui/icon';
+import { ScreenHeader } from '@/components/ui/screen-header';
+import { useSession } from '@/context/session-context';
+import { useTheme } from '@/hooks/use-theme';
 import { useTranslation } from '@/hooks/use-translation';
-import { spacing } from '@/theme';
+import { radius, spacing } from '@/theme';
+
+type RowProps = {
+  icon: IconName;
+  label: string;
+  onPress: () => void;
+  danger?: boolean;
+};
+
+function Row({ icon, label, onPress, danger = false }: RowProps) {
+  const { colors } = useTheme();
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={onPress}
+      style={({ pressed }) => ({
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.md,
+        paddingVertical: spacing.sm + 2,
+        opacity: pressed ? 0.75 : 1,
+      })}>
+      <View
+        style={{
+          width: 40,
+          height: 40,
+          borderRadius: radius.md,
+          backgroundColor: danger ? colors.dangerSoft : colors.chip,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}>
+        <Icon name={icon} size={18} color={danger ? colors.error : colors.text} />
+      </View>
+      <ThemedText variant="headline" themeColor={danger ? 'error' : 'text'} style={{ flex: 1 }}>
+        {label}
+      </ThemedText>
+      {danger ? null : <Icon name="chevronRight" size={18} color={colors.textDisabled} />}
+    </Pressable>
+  );
+}
 
 export function SettingsScreen() {
   const { t } = useTranslation();
-  const { token, enable } = usePushNotifications();
-  const [notice, setNotice] = useState('');
+  const { colors } = useTheme();
+  const { user, signOut } = useSession();
 
-  async function onNotifications() {
-    setNotice('');
-    const result = await enable();
-    if (result.status === 'denied') setNotice(t('common.permissionDenied'));
-    if (result.status === 'unavailable') setNotice(t('services.notificationsHint'));
+  function onLogout() {
+    const finish = () => {
+      void signOut();
+    };
+
+    if (process.env.EXPO_OS === 'web') {
+      const confirmed = window.confirm(`${t('common.logoutTitle')}\n\n${t('common.logoutBody')}`);
+      if (confirmed) finish();
+      return;
+    }
+
+    Alert.alert(t('common.logoutTitle'), t('common.logoutBody'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('settings.logout'), style: 'destructive', onPress: finish },
+    ]);
   }
+
+  const rows: { icon: IconName; label: string; href: string }[] = [
+    { icon: 'bell', label: t('settings.notifications'), href: '/notification-preferences' },
+    { icon: 'lock', label: t('settings.password'), href: '/change-password' },
+    { icon: 'info', label: t('settings.about'), href: '/legal/about' },
+    { icon: 'shield', label: t('settings.privacy'), href: '/legal/privacy' },
+    { icon: 'doc', label: t('settings.terms'), href: '/legal/terms' },
+    { icon: 'mic', label: t('settings.contact'), href: '/contact' },
+    { icon: 'bookmark', label: t('settings.saved'), href: '/saved' },
+    { icon: 'translate', label: t('settings.language'), href: '/language' },
+    { icon: 'sparkles', label: t('settings.theme'), href: '/theme' },
+  ];
 
   return (
     <Screen>
-      <View style={{ gap: spacing.sm }}>
-        <ThemedText variant="headline">{t('common.account')}</ThemedText>
-        <GroupedList>
-          <GroupedRow title={t('common.editProfile')} onPress={() => router.push('/edit-profile')} />
-          <GroupedRow title={t('common.changePassword')} onPress={() => router.push('/change-password')} />
-        </GroupedList>
-      </View>
-      <View style={{ gap: spacing.sm }}>
-        <ThemedText variant="headline">{t('common.appearance')}</ThemedText>
-        <GroupedList>
-          <GroupedRow title={t('common.theme')} onPress={() => router.push('/theme')} />
-          <GroupedRow title={t('common.language')} onPress={() => router.push('/language')} />
-        </GroupedList>
-      </View>
-      <View style={{ gap: spacing.sm }}>
-        <ThemedText variant="headline">{t('common.services')}</ThemedText>
-        <GroupedList>
-          <GroupedRow
-            title={token ? t('common.notificationsOn') : t('common.enableNotifications')}
-            onPress={() => void onNotifications()}
-          />
-          <GroupedRow title={t('common.location')} onPress={() => router.push('/location')} />
-        </GroupedList>
-        {notice ? (
-          <ThemedText variant="caption" themeColor="textSecondary">
-            {notice}
-          </ThemedText>
-        ) : null}
-      </View>
-      <View style={{ gap: spacing.sm }}>
-        <ThemedText variant="headline">{t('common.legal')}</ThemedText>
-        <GroupedList>
-          <GroupedRow title={t('common.privacy')} onPress={() => router.push('/privacy-policy')} />
-          <GroupedRow title={t('common.terms')} onPress={() => router.push('/terms')} />
-        </GroupedList>
-      </View>
+      <ScreenHeader title={t('settings.title')} />
+
+      <Card>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+          <Avatar source={user?.avatarUri || 'portrait'} size={56} ring />
+          <View style={{ flex: 1, gap: 2 }}>
+            <ThemedText variant="headline">{user?.fullName}</ThemedText>
+            <ThemedText variant="caption">{user?.email}</ThemedText>
+          </View>
+        </View>
+      </Card>
+
+      <Card>
+        {rows.map((row, index) => (
+          <View key={row.href}>
+            <Row icon={row.icon} label={row.label} onPress={() => router.push(row.href as never)} />
+            {index < rows.length - 1 ? (
+              <View style={{ height: 1, backgroundColor: colors.border, marginLeft: 56 }} />
+            ) : null}
+          </View>
+        ))}
+      </Card>
+
+      <Card>
+        <Row icon="logout" label={t('settings.logout')} danger onPress={onLogout} />
+      </Card>
     </Screen>
   );
 }

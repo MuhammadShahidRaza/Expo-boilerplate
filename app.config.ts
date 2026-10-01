@@ -26,6 +26,15 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     ]);
   }
 
+  if (!hasPlugin(plugins, 'expo-audio')) {
+    plugins.push([
+      'expo-audio',
+      {
+        microphonePermission: 'Allow CC World to record voice messages.',
+      },
+    ]);
+  }
+
   if (!hasPlugin(plugins, 'expo-notifications')) {
     plugins.push([
       'expo-notifications',

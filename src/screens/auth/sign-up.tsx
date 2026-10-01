@@ -1,65 +1,106 @@
 import { useState } from 'react';
+import { Alert, Pressable, View } from 'react-native';
 import { router } from 'expo-router';
-import { Checkbox, Host } from '@expo/ui';
-import { Pressable, View } from 'react-native';
 
 import { Button } from '@/components/button';
 import { Screen } from '@/components/screen';
 import { TextField } from '@/components/text-field';
 import { ThemedText } from '@/components/themed-text';
+import { Avatar } from '@/components/ui/avatar';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Logo } from '@/components/ui/logo';
+import { PasswordRules } from '@/components/ui/password-rules';
+import { ScreenHeader } from '@/components/ui/screen-header';
+import { SocialAuthRow } from '@/components/ui/social-auth';
 import { useSession } from '@/context/session-context';
-import { useTheme } from '@/hooks/use-theme';
+import { useImagePicker } from '@/hooks/use-image-picker';
 import { useTranslation } from '@/hooks/use-translation';
+import { issueCode } from '@/services/otp';
+import { validateSignUp } from '@/validation';
 import { spacing } from '@/theme';
-
-function isEmail(value: string) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
-}
 
 export function SignUpScreen() {
   const { t } = useTranslation();
-  const { isDark } = useTheme();
-  const { signUp } = useSession();
-  const [fullName, setFullName] = useState('');
+  const { signUp, hasAccount } = useSession();
+  const { pickImage } = useImagePicker();
+  const [uri, setUri] = useState<string | null>(null);
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [agreed, setAgreed] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [confirm, setConfirm] = useState('');
+  const [accepted, setAccepted] = useState(false);
+  const [errors, setErrors] = useState<{
+    name?: string;
+    email?: string;
+    password?: string;
+    confirm?: string;
+    accepted?: string;
+  }>({});
   const [loading, setLoading] = useState(false);
 
+  async function onPickAvatar() {
+    const result = await pickImage();
+    if (result.status === 'denied') {
+      Alert.alert(t('common.appName'), t('common.permissionDenied'));
+      return;
+    }
+    if (result.status === 'ok') setUri(result.uri);
+  }
+
   async function onSubmit() {
-    const next: Record<string, string> = {};
-    if (!fullName.trim()) next.fullName = t('common.nameRequired');
-    if (!email.trim()) next.email = t('common.emailRequired');
-    else if (!isEmail(email)) next.email = t('common.invalidEmail');
-    if (!password) next.password = t('common.passwordRequired');
-    else if (password.length < 8) next.password = t('common.passwordShort');
-    if (password !== confirmPassword) next.confirmPassword = t('common.passwordMismatch');
-    if (!agreed) next.agreed = t('common.mustAgree');
+    const next = validateSignUp({ name, email, password, confirm, accepted }, t);
     setErrors(next);
     if (Object.keys(next).length > 0) return;
 
+    if (hasAccount(email)) {
+      setErrors({ email: t('validation.emailTaken') });
+      return;
+    }
+
     setLoading(true);
-    await signUp({ fullName, email, password });
+    await signUp({ fullName: name, email, password });
+    issueCode(email, 'signup');
     setLoading(false);
-    router.push('/verification?mode=signup');
+    router.push({ pathname: '/verification', params: { email, purpose: 'signup' } });
   }
 
   return (
-    <Screen>
+    <Screen keyboard>
+      <ScreenHeader
+        right={
+          <ThemedText variant="label" themeColor="primary">
+            {t('common.step')}
+          </ThemedText>
+        }
+      />
+      <Logo showTagline />
+      <View style={{ gap: spacing.xs }}>
+        <ThemedText variant="title" themeColor="text">
+          {t('common.signup')}
+        </ThemedText>
+        <ThemedText variant="body">{t('auth.signupBody')}</ThemedText>
+      </View>
+
+      <Pressable accessibilityRole="button" accessibilityLabel={t('common.choosePhoto')} onPress={() => void onPickAvatar()} style={{ alignSelf: 'center' }}>
+        <Avatar size={92} source={uri} badgeIcon="camera" />
+      </Pressable>
+
       <TextField
         label={t('common.fullName')}
-        value={fullName}
-        onChangeText={setFullName}
+        icon="person"
+        value={name}
+        onChangeText={setName}
+        placeholder={t('common.fullName')}
         autoComplete="name"
         textContentType="name"
-        error={errors.fullName}
+        error={errors.name}
       />
       <TextField
-        label={t('common.email')}
+        label={t('auth.emailAddress')}
+        icon="mail"
         value={email}
         onChangeText={setEmail}
+        placeholder={t('auth.emailPlaceholder')}
         autoCapitalize="none"
         autoComplete="email"
         keyboardType="email-address"
@@ -68,40 +109,57 @@ export function SignUpScreen() {
       />
       <TextField
         label={t('common.password')}
+        icon="lock"
         value={password}
         onChangeText={setPassword}
+        placeholder={t('auth.passwordPlaceholder')}
         secureTextEntry
         textContentType="newPassword"
         error={errors.password}
       />
       <TextField
         label={t('common.confirmPassword')}
-        value={confirmPassword}
-        onChangeText={setConfirmPassword}
+        icon="lock"
+        value={confirm}
+        onChangeText={setConfirm}
+        placeholder={t('auth.passwordPlaceholder')}
         secureTextEntry
         textContentType="newPassword"
-        error={errors.confirmPassword}
+        error={errors.confirm}
       />
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-        <Host matchContents colorScheme={isDark ? 'dark' : 'light'}>
-          <Checkbox value={agreed} onValueChange={setAgreed} />
-        </Host>
-        <ThemedText variant="subhead">
-          {t('common.agreeToTerms')}{' '}
-          <ThemedText variant="subhead" themeColor="primary" onPress={() => router.push('/terms')}>
-            {t('common.terms')}
+
+      <PasswordRules value={password} includeUppercase={false} />
+
+      <Checkbox
+        checked={accepted}
+        onPress={() => setAccepted((value) => !value)}
+        error={errors.accepted}
+        label={
+          <ThemedText variant="subhead">
+            {t('auth.accept')}{' '}
+            <ThemedText
+              variant="subhead"
+              themeColor="primary"
+              onPress={() => router.push('/legal/terms')}>
+              {t('auth.terms')}
+            </ThemedText>
+            {' & '}
+            <ThemedText
+              variant="subhead"
+              themeColor="primary"
+              onPress={() => router.push('/legal/privacy')}>
+              {t('auth.privacy')}
+            </ThemedText>
           </ThemedText>
-        </ThemedText>
-      </View>
-      {errors.agreed ? (
-        <ThemedText variant="caption" themeColor="error">
-          {errors.agreed}
-        </ThemedText>
-      ) : null}
-      <Button title={t('common.signUp')} onPress={() => void onSubmit()} loading={loading} />
-      <View style={{ flexDirection: 'row', gap: spacing.xs, flexWrap: 'wrap' }}>
-        <ThemedText variant="subhead">{t('common.alreadyHaveAccount')}</ThemedText>
-        <Pressable onPress={() => router.push('/login')}>
+        }
+      />
+
+      <Button title={t('common.continue')} loading={loading} onPress={() => void onSubmit()} />
+      <SocialAuthRow />
+
+      <View style={{ flexDirection: 'row', justifyContent: 'center', gap: spacing.xs, flexWrap: 'wrap' }}>
+        <ThemedText variant="subhead">{t('auth.hasAccount')}</ThemedText>
+        <Pressable accessibilityRole="button" onPress={() => router.push('/login')}>
           <ThemedText variant="subhead" themeColor="primary">
             {t('common.login')}
           </ThemedText>

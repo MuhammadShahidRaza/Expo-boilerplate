@@ -6,12 +6,10 @@ import { initReactI18next } from 'react-i18next';
 
 import { isLanguageCode, type LanguageCode } from '@/constants/languages';
 import { STORAGE_KEYS } from '@/constants/storage';
-import { ar } from '@/i18n/languages/ar';
-import { de } from '@/i18n/languages/de';
 import { en } from '@/i18n/languages/en';
 import { es } from '@/i18n/languages/es';
-import { nl } from '@/i18n/languages/nl';
-import { pt } from '@/i18n/languages/pt';
+import { fr } from '@/i18n/languages/fr';
+import { ht } from '@/i18n/languages/ht';
 import { store } from '@/store';
 import { setAppLanguage } from '@/store/slices/app';
 import { getItem, removeItem, setItem } from '@/utils/storage';
@@ -19,10 +17,8 @@ import { getItem, removeItem, setItem } from '@/utils/storage';
 export const resources = {
   en: { translation: en },
   es: { translation: es },
-  nl: { translation: nl },
-  de: { translation: de },
-  pt: { translation: pt },
-  ar: { translation: ar },
+  fr: { translation: fr },
+  ht: { translation: ht },
 } as const;
 
 void i18n.use(initReactI18next).init({
@@ -37,8 +33,8 @@ export function deviceLanguage(): LanguageCode {
   return isLanguageCode(code) ? code : 'en';
 }
 
-async function syncDirection(language: LanguageCode) {
-  const shouldRTL = language === 'ar';
+async function syncDirection(_language: LanguageCode) {
+  const shouldRTL = false;
   if (I18nManager.isRTL === shouldRTL) {
     await removeItem(STORAGE_KEYS.rtlAttempt);
     return false;

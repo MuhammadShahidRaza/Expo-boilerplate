@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Poppins_400Regular,
   Poppins_500Medium,
@@ -17,12 +17,12 @@ import { PersistGate } from 'redux-persist/integration/react';
 import '@/global.css';
 
 import { AppLoader } from '@/components/app-loader';
+import { SplashIntro } from '@/components/splash-intro';
 import { NotificationsBridge } from '@/components/notifications-bridge';
 import { OfflineBanner } from '@/components/offline-banner';
 import { SessionProvider, useSession } from '@/context/session-context';
 import { I18nProvider } from '@/i18n/provider';
 import { useTheme } from '@/hooks/use-theme';
-import { useTranslation } from '@/hooks/use-translation';
 import { persistor, store } from '@/store';
 import { fontFamily } from '@/theme';
 import { AppThemeProvider } from '@/theme/theme-context';
@@ -56,8 +56,8 @@ export default function RootLayout() {
 
 function NavigationShell({ fontsLoaded }: { fontsLoaded: boolean }) {
   const { isDark, colors } = useTheme();
-  const { t } = useTranslation();
   const { user } = useSession();
+  const [splashDone, setSplashDone] = useState(false);
 
   useEffect(() => {
     if (fontsLoaded) {
@@ -94,27 +94,23 @@ function NavigationShell({ fontsLoaded }: { fontsLoaded: boolean }) {
     headerTitleStyle: { fontFamily: fontFamily.semibold },
   };
 
+  if (!splashDone) return <SplashIntro onFinish={() => setSplashDone(true)} />;
+
   return (
     <ThemeProvider value={navigationTheme}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <OfflineBanner />
       <NotificationsBridge />
       <AppLoader />
-      <Stack screenOptions={screenOptions}>
-        <Stack.Screen name="index" options={{ headerShown: false }} />
-        <Stack.Screen name="language" options={{ title: t('common.language') }} />
-        <Stack.Screen name="privacy-policy" options={{ title: t('common.privacy') }} />
-        <Stack.Screen name="terms" options={{ title: t('common.terms') }} />
+      <Stack screenOptions={{ ...screenOptions, headerShown: false }}>
+        <Stack.Screen name="index" />
         <Stack.Protected guard={!user}>
-          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+          <Stack.Screen name="(setup)" />
+          <Stack.Screen name="(auth)" />
         </Stack.Protected>
         <Stack.Protected guard={Boolean(user)}>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="settings" options={{ title: t('common.settings') }} />
-          <Stack.Screen name="theme" options={{ title: t('common.theme') }} />
-          <Stack.Screen name="edit-profile" options={{ title: t('common.editProfile') }} />
-          <Stack.Screen name="change-password" options={{ title: t('common.changePassword') }} />
-          <Stack.Screen name="location" options={{ title: t('common.location') }} />
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="(main)" />
         </Stack.Protected>
       </Stack>
     </ThemeProvider>

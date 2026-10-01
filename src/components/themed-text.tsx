@@ -28,7 +28,19 @@ const legacyVariant: Record<LegacyType, TypeVariant | 'code'> = {
 export type ThemedTextProps = TextProps & {
   variant?: TypeVariant;
   type?: LegacyType;
-  themeColor?: 'text' | 'textSecondary' | 'primary' | 'textInverse' | 'error' | 'secondary';
+  themeColor?:
+    | 'text'
+    | 'textSecondary'
+    | 'textDisabled'
+    | 'primary'
+    | 'textInverse'
+    | 'error'
+    | 'secondary'
+    | 'success'
+    | 'link'
+    | 'gold'
+    | 'onGold'
+    | 'tabBarInactive';
 };
 
 export function ThemedText({

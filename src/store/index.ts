@@ -16,6 +16,7 @@ import { locationReducer } from '@/store/slices/location';
 import { notificationsReducer } from '@/store/slices/notifications';
 import { uiReducer } from '@/store/slices/ui';
 import { userReducer } from '@/store/slices/user';
+import { worldReducer } from '@/store/slices/world';
 
 const rootReducer = combineReducers({
   app: appReducer,
@@ -23,13 +24,14 @@ const rootReducer = combineReducers({
   notifications: notificationsReducer,
   location: locationReducer,
   ui: uiReducer,
+  world: worldReducer,
 });
 
 const persistedReducer = persistReducer(
   {
     key: 'cc-world',
     storage: persistStorage,
-    whitelist: ['app', 'user'],
+    whitelist: ['app', 'user', 'world'],
   },
   rootReducer,
 );

@@ -3,6 +3,7 @@ import axios from 'axios';
 import { signOut as firebaseSignOut } from 'firebase/auth';
 
 import { STORAGE_KEYS } from '@/constants/storage';
+import { demoProfile } from '@/data/content';
 import { authToken, authUser, loginRequest, uploadProfilePicture } from '@/services/api/auth';
 import { hasApi } from '@/services/api/client';
 import { getFirebaseAuth } from '@/services/firebase';
@@ -97,6 +98,15 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
           email: savedAccount.email,
           password,
         });
+      } else {
+        const demo = {
+          fullName: demoProfile.fullName,
+          email: demoProfile.email,
+          password: demoProfile.password,
+        };
+        setAccount(demo);
+        await setSecret(SECRET_KEYS.accountPassword, demo.password);
+        await setItem(STORAGE_KEYS.account, { fullName: demo.fullName, email: demo.email });
       }
       setStoredOnboarded(Boolean(onboarded));
       if (onboarded) dispatch(setHasOnboarded(true));
@@ -255,10 +265,14 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const resetPassword = useCallback(
     async (email: string, nextPassword: string) => {
       const normalized = normalizeEmail(email);
-      if (!account || account.email !== normalized) return 'invalid' as const;
-      const stored = { ...account, password: nextPassword };
+      const stored = {
+        fullName: account?.email === normalized ? account.fullName : account?.fullName || normalized.split('@')[0] || 'Member',
+        email: normalized,
+        password: nextPassword,
+      };
       setAccount(stored);
       await setSecret(SECRET_KEYS.accountPassword, nextPassword);
+      await setItem(STORAGE_KEYS.account, { fullName: stored.fullName, email: stored.email });
       return 'ok' as const;
     },
     [account],

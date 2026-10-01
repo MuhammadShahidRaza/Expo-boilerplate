@@ -1,10 +1,8 @@
 export const languages = [
-  { code: 'en', nativeLabel: 'English', rtl: false },
-  { code: 'es', nativeLabel: 'Español', rtl: false },
-  { code: 'nl', nativeLabel: 'Nederlands', rtl: false },
-  { code: 'de', nativeLabel: 'Deutsch', rtl: false },
-  { code: 'pt', nativeLabel: 'Português', rtl: false },
-  { code: 'ar', nativeLabel: 'العربية', rtl: true },
+  { code: 'ht', nativeLabel: 'Kreyòl Ayisyen', englishLabel: 'Haitian Creole', short: 'KR', rtl: false },
+  { code: 'en', nativeLabel: 'English', englishLabel: 'English', short: 'EN', rtl: false },
+  { code: 'fr', nativeLabel: 'Français', englishLabel: 'French', short: 'FR', rtl: false },
+  { code: 'es', nativeLabel: 'Español', englishLabel: 'Spanish', short: 'ES', rtl: false },
 ] as const;
 
 export type LanguageCode = (typeof languages)[number]['code'];
