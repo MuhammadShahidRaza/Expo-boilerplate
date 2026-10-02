@@ -38,6 +38,7 @@ export type Poll = {
   question: string;
   options: PollOption[];
   votedId: string | null;
+  image?: string;
 };
 
 export type ChatMessage = {

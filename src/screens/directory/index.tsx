@@ -18,7 +18,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useTranslation } from '@/hooks/use-translation';
 import { radius, spacing } from '@/theme';
 
-const filters = ['all', 'restaurants', 'tax', 'barber'] as const;
+const filters = ['all', 'restaurants', 'tax', 'barber', 'dealer'] as const;
 
 export function DirectoryScreen() {
   const { colors } = useTheme();

@@ -62,7 +62,7 @@ export const serviceCategories = [
     id: 'local',
     icon: 'store' as const,
     tint: 'gold' as const,
-    chips: ['barber', 'mechanic', 'lawyer', 'tax', 'salon', 'plumber', 'ac', 'insurance', 'bar', 'dealer', 'gas'],
+    chips: ['restaurants', 'barber', 'tax', 'dealer'],
   },
   { id: 'training', icon: 'graduation' as const, tint: 'red' as const, chips: [] as string[] },
   { id: 'jobs', icon: 'briefcase' as const, tint: 'brown' as const, chips: [] as string[] },

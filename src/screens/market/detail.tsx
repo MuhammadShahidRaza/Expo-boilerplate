@@ -115,7 +115,7 @@ export function ListingDetailScreen() {
             <Pressable
               accessibilityRole="link"
               accessibilityLabel={t('market.viewProfile')}
-              onPress={() => router.push(`/member/${listing.id}`)}
+              onPress={() => router.push(`/member/${encodeURIComponent(listing.sellerName)}`)}
               hitSlop={8}>
               <ThemedText variant="label" themeColor="gold">
                 {t('market.viewProfile')}

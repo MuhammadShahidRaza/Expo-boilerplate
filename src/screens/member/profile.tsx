@@ -42,7 +42,12 @@ export function MemberProfileScreen() {
   const insets = useSafeAreaInsets();
   const [tab, setTab] = useState<(typeof tabs)[number]>('myPosts');
 
-  const isMe = memberId === 'me';
+  const decodedName = decodeURIComponent(memberId);
+  const isMe = memberId === 'me' || decodedName === user?.fullName;
+  const known =
+    isMe ||
+    world.listings.some((listing) => listing.sellerName === decodedName) ||
+    world.threads.some((thread) => thread.id === memberId || thread.name === decodedName);
   const displayName = useMemo(() => {
     if (isMe) return user?.fullName ?? 'Marcus Williams';
     if (memberId.toLowerCase().includes('marie')) return 'Marie Celestin';
@@ -60,6 +65,19 @@ export function MemberProfileScreen() {
     }
     return world.posts.filter((post) => !post.official);
   }, [displayName, isMe, user?.fullName, world.posts]);
+
+  if (!known) {
+    return (
+      <Screen>
+        <IconButton
+          icon="back"
+          accessibilityLabel={t('common.back')}
+          onPress={() => (router.canGoBack() ? router.back() : router.replace('/marketplace'))}
+        />
+        <ThemedText variant="body">{t('directory.empty')}</ThemedText>
+      </Screen>
+    );
+  }
 
   return (
     <Screen padded={false} safeTop={false}>

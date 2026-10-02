@@ -52,6 +52,7 @@ export function StateScreen() {
         </>
       }>
       <ScreenHeader
+        onBack={() => router.replace('/community')}
         right={
           <ThemedText variant="headline" themeColor="text">
             {countryCode ?? ''}

@@ -28,6 +28,10 @@ export function EditProfileScreen() {
 
   async function onPickPhoto() {
     const result = await pickImage();
+    if (result.status === 'denied') {
+      Alert.alert(t('common.appName'), t('common.permissionDenied'));
+      return;
+    }
     if (result.status === 'ok') setAvatarUri(result.uri);
   }
 

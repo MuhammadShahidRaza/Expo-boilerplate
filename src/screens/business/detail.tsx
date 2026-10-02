@@ -154,15 +154,19 @@ export function BusinessDetailScreen() {
               icon="chat"
               style={{ paddingHorizontal: spacing.sm }}
               onPress={() => {
-                dispatch(
-                  ensureThread({
-                    id: business.id,
-                    name: business.name,
-                    avatar: business.image,
-                    kind: 'business',
-                  }),
-                );
-                router.push(`/conversation/${business.id}`);
+                const existing = world.threads.find((thread) => thread.name === business.name);
+                const threadId = existing?.id ?? business.id;
+                if (!existing) {
+                  dispatch(
+                    ensureThread({
+                      id: threadId,
+                      name: business.name,
+                      avatar: business.image,
+                      kind: 'business',
+                    }),
+                  );
+                }
+                router.push(`/conversation/${threadId}`);
               }}
             />
           </View>

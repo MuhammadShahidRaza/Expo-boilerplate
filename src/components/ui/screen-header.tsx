@@ -21,7 +21,17 @@ export function ScreenHeader({ title, onBack, right, hideBack = false }: ScreenH
       {hideBack ? (
         <View style={{ width: 44 }} />
       ) : (
-        <IconButton icon="back" accessibilityLabel={t('common.back')} onPress={onBack ?? (() => router.back())} />
+        <IconButton
+          icon="back"
+          accessibilityLabel={t('common.back')}
+          onPress={
+            onBack ??
+            (() => {
+              if (router.canGoBack()) router.back();
+              else router.replace('/');
+            })
+          }
+        />
       )}
       <View style={{ flex: 1, alignItems: 'center' }}>
         {title ? (

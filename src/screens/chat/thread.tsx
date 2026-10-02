@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Alert, FlatList, Platform, Pressable, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import {
@@ -41,14 +41,46 @@ const playbackMode = {
 type WebClip = {
   paused: boolean;
   currentTime: number;
+  duration: number;
   onended: (() => void) | null;
+  ontimeupdate: (() => void) | null;
   pause: () => void;
   play: () => Promise<void>;
 };
 
+const WAVE = [0.4, 0.7, 1, 0.55, 0.85, 0.45, 0.75, 1, 0.6, 0.35, 0.8, 0.5, 0.95, 0.65, 0.4, 0.72, 1, 0.58, 0.38, 0.82, 0.48, 0.9];
+
+function VoiceWave({ progress, color, phase = 0 }: { progress: number; color: string; phase?: number }) {
+  const moving = phase > 0;
+  return (
+    <View style={{ height: 28, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
+      {WAVE.map((shape, index) => {
+        const played = index / WAVE.length < progress;
+        const level = moving ? 0.28 + 0.72 * Math.abs(Math.sin(index * 0.55 + phase)) : shape;
+        return (
+          <View
+            key={index}
+            style={{
+              width: 3,
+              height: 4 + level * 20,
+              borderRadius: radius.full,
+              backgroundColor: color,
+              opacity: moving ? 0.45 + level * 0.55 : played ? 1 : 0.35,
+            }}
+          />
+        );
+      })}
+    </View>
+  );
+}
+
 const webClips = new Map<string, WebClip>();
 
-function toggleWebClip(uri: string, onPlaying: (playing: boolean) => void) {
+function toggleWebClip(
+  uri: string,
+  onPlaying: (playing: boolean) => void,
+  onTime: (time: number, duration: number) => void,
+) {
   const AudioCtor = (globalThis as { Audio?: new (src: string) => WebClip }).Audio;
   if (!AudioCtor) return;
   let clip = webClips.get(uri);
@@ -63,6 +95,7 @@ function toggleWebClip(uri: string, onPlaying: (playing: boolean) => void) {
   }
   clip.currentTime = 0;
   clip.onended = () => onPlaying(false);
+  clip.ontimeupdate = () => onTime(clip.currentTime, clip.duration || 0);
   void clip.play().then(() => onPlaying(true)).catch(() => onPlaying(false));
 }
 
@@ -74,12 +107,21 @@ function VoiceBubble({ message, mine }: { message: ChatMessage; mine: boolean })
   });
   const status = useAudioPlayerStatus(player);
   const [webPlaying, setWebPlaying] = useState(false);
+  const [webTime, setWebTime] = useState(0);
+  const [webDuration, setWebDuration] = useState(0);
   const playing = Platform.OS === 'web' ? webPlaying : status.playing;
   const tint = mine ? colors.onGold : colors.primary;
+  const durationSec =
+    (Platform.OS === 'web' ? webDuration : status.duration) || (message.durationMs ?? 0) / 1000;
+  const timeSec = Platform.OS === 'web' ? webTime : status.currentTime;
+  const progress = durationSec > 0 ? Math.min(1, timeSec / durationSec) : 0;
 
   const toggle = () => {
     if (Platform.OS === 'web' && message.audioUri) {
-      toggleWebClip(message.audioUri, setWebPlaying);
+      toggleWebClip(message.audioUri, setWebPlaying, (time, duration) => {
+        setWebTime(time);
+        setWebDuration(duration);
+      });
       return;
     }
     if (player.playing) {
@@ -87,7 +129,6 @@ function VoiceBubble({ message, mine }: { message: ChatMessage; mine: boolean })
       return;
     }
     void setAudioModeAsync(playbackMode).then(async () => {
-      if (message.audioUri) player.replace({ uri: message.audioUri });
       player.muted = false;
       player.volume = 1;
       await player.seekTo(0);
@@ -96,14 +137,25 @@ function VoiceBubble({ message, mine }: { message: ChatMessage; mine: boolean })
   };
 
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={t('chat.voice')}
-      onPress={() => void toggle()}
-      style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minWidth: 168 }}>
-      <Icon name={playing ? 'pause' : 'play'} size={18} color={tint} />
-      <ThemedText variant="body" style={{ color: mine ? colors.onGold : colors.text }}>
-        {formatVoice(message.durationMs ?? Math.round((player.duration || 1) * 1000))}
+    <Pressable accessibilityRole="button" accessibilityLabel={t('chat.voice')} onPress={() => void toggle()} style={{ gap: 6 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+        <View
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: radius.full,
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: mine ? colors.background : colors.goldSoft,
+          }}>
+          <View style={{ marginLeft: playing ? 0 : 2 }}>
+            <Icon name={playing ? 'pause' : 'play'} size={13} color={mine ? colors.primary : colors.gold} />
+          </View>
+        </View>
+        <VoiceWave progress={progress} color={tint} />
+      </View>
+      <ThemedText variant="caption" style={{ color: tint, marginLeft: 44 }}>
+        {formatVoice((timeSec > 0 ? timeSec : durationSec || 1) * 1000)}
       </ThemedText>
     </Pressable>
   );
@@ -117,6 +169,13 @@ export function ConversationScreen() {
   const thread = useAppSelector((state) => state.world.threads.find((item) => item.id === id));
   const [text, setText] = useState('');
   const [recording, setRecording] = useState(false);
+  const [recordPhase, setRecordPhase] = useState(0);
+
+  useEffect(() => {
+    if (!recording) return;
+    const timer = setInterval(() => setRecordPhase((value) => value + 0.45), 120);
+    return () => clearInterval(timer);
+  }, [recording]);
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const recorderState = useAudioRecorderState(recorder, 200);
 
@@ -124,10 +183,9 @@ export function ConversationScreen() {
 
   if (!thread) {
     return (
-      <Screen scroll={false}>
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ThemedText variant="headline">{t('chat.empty')}</ThemedText>
-        </View>
+      <Screen>
+        <IconButton icon="back" accessibilityLabel={t('common.back')} onPress={() => (router.canGoBack() ? router.back() : router.replace('/chat'))} />
+        <ThemedText variant="headline">{t('chat.empty')}</ThemedText>
       </Screen>
     );
   }
@@ -183,13 +241,14 @@ export function ConversationScreen() {
                   borderRadius: radius.full,
                   backgroundColor: colors.dangerSoft,
                   alignItems: 'center',
-                  justifyContent: 'center',
+                  paddingHorizontal: spacing.md,
                   flexDirection: 'row',
                   gap: spacing.sm,
                 }}>
-                <Icon name="mic" size={18} color={colors.error} />
-                <ThemedText variant="label" themeColor="error">
-                  {t('chat.recording')} {formatVoice(recorderState.durationMillis)}
+                <Icon name="mic" size={16} color={colors.error} />
+                <VoiceWave progress={1} color={colors.error} phase={recordPhase} />
+                <ThemedText variant="caption" themeColor="error">
+                  {formatVoice(recorderState.durationMillis)}
                 </ThemedText>
               </View>
             ) : (
@@ -306,11 +365,11 @@ export function ConversationScreen() {
             <View style={{ alignItems: item.mine ? 'flex-end' : 'flex-start', gap: 4 }}>
               <View
                 style={{
-                  maxWidth: '78%',
+                  maxWidth: item.audioUri ? '88%' : '78%',
                   backgroundColor: item.mine ? colors.bubbleMine : colors.bubbleTheirs,
                   borderRadius: radius.xl,
-                  paddingHorizontal: spacing.md,
-                  paddingVertical: spacing.sm + 2,
+                  paddingHorizontal: item.audioUri ? spacing.sm + 2 : spacing.md,
+                  paddingVertical: item.audioUri ? spacing.sm : spacing.sm + 2,
                 }}>
                 {item.audioUri ? (
                   <VoiceBubble message={item} mine={item.mine} />

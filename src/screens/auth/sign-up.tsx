@@ -53,7 +53,8 @@ export function SignUpScreen() {
     if (Object.keys(next).length > 0) return;
 
     if (hasAccount(email)) {
-      setErrors({ email: t('validation.emailTaken') });
+      issueCode(email, 'signup');
+      router.push({ pathname: '/verification', params: { email, purpose: 'signup' } });
       return;
     }
 

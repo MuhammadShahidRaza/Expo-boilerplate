@@ -63,6 +63,7 @@ export function CreatePollScreen() {
         question: question.trim(),
         options: filled,
         avatar: 'portraitM',
+        image: attachment ?? undefined,
       }),
     );
     router.back();

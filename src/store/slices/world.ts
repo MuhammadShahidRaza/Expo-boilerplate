@@ -144,6 +144,7 @@ const worldSlice = createSlice({
       if (active) {
         state.countryCode = active.code;
         state.stateName = active.state ?? null;
+        state.activeChapter = active.state || active.name;
       }
     },
     addCommunity(state, action: PayloadAction<string>) {
@@ -203,7 +204,7 @@ const worldSlice = createSlice({
       option.votes += 1;
       poll.votedId = option.id;
     },
-    addPoll(state, action: PayloadAction<{ author: string; question: string; options: string[]; avatar: PhotoKey }>) {
+    addPoll(state, action: PayloadAction<{ author: string; question: string; options: string[]; avatar: PhotoKey; image?: string }>) {
       state.polls.unshift({
         id: uid('poll'),
         authorName: action.payload.author,
@@ -211,6 +212,7 @@ const worldSlice = createSlice({
         createdAt: new Date().toISOString(),
         question: action.payload.question.trim(),
         votedId: null,
+        image: action.payload.image,
         options: action.payload.options.filter((label) => label.trim()).map((label) => ({ id: uid('opt'), label: label.trim(), votes: 0 })),
       });
     },
@@ -272,6 +274,7 @@ const worldSlice = createSlice({
         host: string;
         day?: string;
         month?: string;
+        image?: string;
       }>,
     ) {
       const day = action.payload.day || action.payload.date.slice(0, 2) || '01';
@@ -286,7 +289,7 @@ const worldSlice = createSlice({
         address: action.payload.location.trim(),
         about: action.payload.details.trim(),
         host: action.payload.host,
-        image: 'festival',
+        image: action.payload.image || 'festival',
         going: true,
         attendees: 1,
       });

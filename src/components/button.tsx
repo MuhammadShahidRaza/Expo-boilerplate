@@ -66,7 +66,12 @@ export function Button({
       ) : (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
           {icon ? <Icon name={icon} size={18} color={palette.color} /> : null}
-          <ThemedText variant="button" numberOfLines={1} style={{ color: palette.color, flexShrink: 1 }}>
+          <ThemedText
+            variant="button"
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.75}
+            style={{ color: palette.color, flexShrink: 1 }}>
             {title}
           </ThemedText>
           {trailing ? <Icon name={trailing} size={18} color={palette.color} /> : null}

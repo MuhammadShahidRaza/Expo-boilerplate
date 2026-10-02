@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Alert, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { PostCard } from '@/components/feed/post-card';
@@ -38,14 +38,23 @@ export function ProfileScreen() {
   async function onPickAvatar() {
     if (!user) return;
     const result = await pickImage();
+    if (result.status === 'denied') {
+      Alert.alert(t('common.appName'), t('common.permissionDenied'));
+      return;
+    }
     if (result.status !== 'ok') return;
     await updateProfile({ ...user, avatarUri: result.uri });
   }
 
   const bioLines = world.bio.split('\n');
   const primaryBio = bioLines[0] ?? '';
-  const caption = bioLines.slice(1).join('\n') || 'Little Haiti proud';
-  const postsCount = world.posts.length;
+  const caption = bioLines.slice(1).join('\n').trim();
+  const myName = user?.fullName ?? '';
+  const myPosts = world.posts.filter((post) => post.mine || post.authorName === myName);
+  const myPolls = world.polls.filter((poll) => poll.authorName === myName);
+  const myListings = world.listings.filter((listing) => listing.sellerName === myName);
+  const myEvents = world.events.filter((event) => event.host === myName);
+  const postsCount = myPosts.length;
 
   return (
     <Screen tab padded={false} safeTop={false} contentContainerStyle={{ paddingHorizontal: 0, paddingTop: 0, gap: 0 }}>
@@ -95,7 +104,7 @@ export function ProfileScreen() {
         <View style={{ gap: spacing.xs }}>
           {primaryBio ? <ThemedText variant="body">{primaryBio}</ThemedText> : null}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-            <ThemedText variant="caption">{caption}</ThemedText>
+            {caption ? <ThemedText variant="caption">{caption}</ThemedText> : null}
             <Badge label={t('profile.proud')} tone="gold" />
           </View>
         </View>
@@ -174,10 +183,13 @@ export function ProfileScreen() {
 
         {tab === 'posts' ? (
           <View style={{ gap: spacing.md }}>
-            {world.posts.map((post) => (
+            {myPosts.length === 0 && myPolls.length === 0 ? (
+              <ThemedText variant="body">{t('empty.activities')}</ThemedText>
+            ) : null}
+            {myPosts.map((post) => (
               <PostCard key={post.id} post={post} />
             ))}
-            {world.polls.map((poll) => (
+            {myPolls.map((poll) => (
               <PollCard key={poll.id} poll={poll} />
             ))}
           </View>
@@ -185,7 +197,8 @@ export function ProfileScreen() {
 
         {tab === 'listings' ? (
           <View style={{ gap: spacing.sm }}>
-            {world.listings.map((listing) => (
+            {myListings.length === 0 ? <ThemedText variant="body">{t('market.empty')}</ThemedText> : null}
+            {myListings.map((listing) => (
               <Card key={listing.id} onPress={() => router.push(`/listing/${listing.id}`)}>
                 <View style={{ flexDirection: 'row', gap: spacing.md, alignItems: 'center' }}>
                   <Image
@@ -207,7 +220,8 @@ export function ProfileScreen() {
 
         {tab === 'events' ? (
           <View style={{ gap: spacing.sm }}>
-            {world.events.map((event) => (
+            {myEvents.length === 0 ? <ThemedText variant="body">{t('empty.activities')}</ThemedText> : null}
+            {myEvents.map((event) => (
               <Card key={event.id} onPress={() => router.push(`/event/${event.id}`)}>
                 <View style={{ flexDirection: 'row', gap: spacing.md, alignItems: 'center' }}>
                   <View

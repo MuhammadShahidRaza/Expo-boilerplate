@@ -1,4 +1,7 @@
 import { Pressable, View } from 'react-native';
+import { Image } from 'expo-image';
+
+import { resolvePhoto } from '@/data/images';
 
 import { ThemedText } from '@/components/themed-text';
 import { Avatar } from '@/components/ui/avatar';
@@ -30,6 +33,9 @@ export function PollCard({ poll }: { poll: Poll }) {
       <ThemedText variant="section" style={{ marginTop: spacing.md }}>
         {poll.question}
       </ThemedText>
+      {poll.image ? (
+        <Image source={resolvePhoto(poll.image)} style={{ width: '100%', height: 140, borderRadius: radius.lg, marginTop: spacing.md }} contentFit="cover" />
+      ) : null}
       <View style={{ gap: spacing.sm, marginTop: spacing.md }}>
         {poll.options.map((option) => {
           const percent = Math.round((option.votes / total) * 100);

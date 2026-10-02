@@ -65,6 +65,7 @@ export function CreateEventScreen() {
         details,
         location,
         host: user?.fullName ?? '',
+        image: coverUri ?? undefined,
       }),
     );
     router.replace('/events');

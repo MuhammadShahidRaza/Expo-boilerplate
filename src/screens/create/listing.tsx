@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Alert, Pressable, ScrollView, View } from 'react-native';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 
@@ -45,6 +45,10 @@ export function CreateListingScreen() {
   const addPhoto = async () => {
     if (photos.length >= 6) return;
     const result = await pickImage();
+    if (result.status === 'denied') {
+      Alert.alert(t('common.appName'), t('common.permissionDenied'));
+      return;
+    }
     if (result.status === 'ok') setPhotos((current) => [...current, result.uri]);
   };
 

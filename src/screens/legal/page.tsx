@@ -46,7 +46,10 @@ export function LegalPage() {
   const key = typeof slug === 'string' ? slug : '';
 
   useEffect(() => {
-    if (!isLegalSlug(key)) router.back();
+    if (!isLegalSlug(key)) {
+      if (router.canGoBack()) router.back();
+      else router.replace('/settings');
+    }
   }, [key]);
 
   if (!isLegalSlug(key)) return null;
