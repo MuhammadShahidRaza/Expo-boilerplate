@@ -24,6 +24,8 @@ import { SessionProvider, useSession } from '@/context/session-context';
 import { I18nProvider } from '@/i18n/provider';
 import { useTheme } from '@/hooks/use-theme';
 import { persistor, store } from '@/store';
+import { useAppDispatch } from '@/store/hooks';
+import { ensureProfileSamples } from '@/store/slices/world';
 import { fontFamily } from '@/theme';
 import { AppThemeProvider } from '@/theme/theme-context';
 
@@ -57,7 +59,12 @@ export default function RootLayout() {
 function NavigationShell({ fontsLoaded }: { fontsLoaded: boolean }) {
   const { isDark, colors } = useTheme();
   const { user } = useSession();
+  const dispatch = useAppDispatch();
   const [splashDone, setSplashDone] = useState(false);
+
+  useEffect(() => {
+    dispatch(ensureProfileSamples());
+  }, [dispatch]);
 
   useEffect(() => {
     if (fontsLoaded) {

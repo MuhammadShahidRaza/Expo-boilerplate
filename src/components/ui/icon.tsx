@@ -63,6 +63,7 @@ export type IconName =
   | 'arrowRight'
   | 'more'
   | 'flag'
+  | 'block'
   | 'megaphone'
   | 'filter'
   | 'sun'
@@ -131,6 +132,7 @@ const names: Record<IconName, SymbolViewProps['name']> = {
   arrowRight: { ios: 'arrow.right', android: 'arrow_forward', web: 'arrow_forward' },
   more: { ios: 'ellipsis', android: 'more_horiz', web: 'more_horiz' },
   flag: { ios: 'flag', android: 'flag', web: 'flag' },
+  block: { ios: 'nosign', android: 'block', web: 'block' },
   megaphone: { ios: 'megaphone', android: 'campaign', web: 'campaign' },
   filter: { ios: 'line.3.horizontal.decrease', android: 'tune', web: 'tune' },
   sun: { ios: 'sun.max.fill', android: 'light_mode', web: 'light_mode' },

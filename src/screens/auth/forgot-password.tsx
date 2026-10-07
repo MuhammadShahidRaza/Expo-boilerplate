@@ -99,7 +99,14 @@ export function ForgotPasswordScreen() {
           }}
         />
       }>
-      <ScreenHeader />
+      <ScreenHeader
+        onBack={() => {
+          if (step === 'reset') setStep('code');
+          else if (step === 'code') setStep('email');
+          else if (router.canGoBack()) router.back();
+          else router.replace('/login');
+        }}
+      />
       <Logo showTagline />
 
       {step === 'email' ? (

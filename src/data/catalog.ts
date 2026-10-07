@@ -62,7 +62,7 @@ export const serviceCategories = [
     id: 'local',
     icon: 'store' as const,
     tint: 'gold' as const,
-    chips: ['restaurants', 'barber', 'tax', 'dealer'],
+    chips: ['barber', 'mechanic', 'lawyer', 'tax', 'salon', 'plumber', 'ac', 'insurance', 'bar', 'dealer', 'gas'],
   },
   { id: 'training', icon: 'graduation' as const, tint: 'red' as const, chips: [] as string[] },
   { id: 'jobs', icon: 'briefcase' as const, tint: 'brown' as const, chips: [] as string[] },
@@ -78,6 +78,26 @@ export const jobs = [
 ];
 
 export const chapters = ['Little Haiti Miami', 'Wynwood Arts', 'Liberty City'] as const;
+
+export const postTypes = [
+  'official',
+  'announcement',
+  'alert',
+  'event',
+  'job',
+  'marketplace',
+  'question',
+  'recommendation',
+  'lost',
+  'celebration',
+  'volunteer',
+  'news',
+  'safety',
+  'housing',
+  'general',
+] as const;
+
+export type PostTypeId = (typeof postTypes)[number];
 
 export function countryByCode(code: string | null) {
   return countries.find((country) => country.code === code) ?? null;

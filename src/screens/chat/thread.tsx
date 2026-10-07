@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, FlatList, Platform, Pressable, View } from 'react-native';
+import { Alert, FlatList, Linking, Platform, Pressable, View } from 'react-native';
+import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import {
   RecordingPresets,
@@ -15,18 +16,21 @@ import { Screen } from '@/components/screen';
 import { TextField } from '@/components/text-field';
 import { ThemedText } from '@/components/themed-text';
 import { Avatar } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import { Icon } from '@/components/ui/icon';
 import { IconButton } from '@/components/ui/icon-button';
+import { VideoPreview } from '@/components/ui/video-preview';
+import { businesses, type ChatMessage, type SharedPost, type Thread } from '@/data/content';
+import { resolvePhoto } from '@/data/images';
 import { useTheme } from '@/hooks/use-theme';
 import { useTranslation } from '@/hooks/use-translation';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { sendMessage } from '@/store/slices/world';
-import type { ChatMessage } from '@/data/content';
 import { radius, spacing } from '@/theme';
 import { formatClock } from '@/utils/time';
 
 function formatVoice(ms: number) {
-  const total = Math.max(1, Math.round(ms / 1000));
+  const total = Math.max(0, Math.round(ms / 1000));
   return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
 }
 
@@ -48,28 +52,68 @@ type WebClip = {
   play: () => Promise<void>;
 };
 
-const WAVE = [0.4, 0.7, 1, 0.55, 0.85, 0.45, 0.75, 1, 0.6, 0.35, 0.8, 0.5, 0.95, 0.65, 0.4, 0.72, 1, 0.58, 0.38, 0.82, 0.48, 0.9];
+const WAVE = [0.35, 0.7, 1, 0.55, 0.85, 0.4, 0.75, 0.95, 0.5, 0.8, 0.45, 0.9, 0.6, 0.35, 0.72, 1];
 
 function VoiceWave({ progress, color, phase = 0 }: { progress: number; color: string; phase?: number }) {
   const moving = phase > 0;
   return (
-    <View style={{ height: 28, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
+    <View style={{ width: 128, height: 28, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
       {WAVE.map((shape, index) => {
         const played = index / WAVE.length < progress;
-        const level = moving ? 0.28 + 0.72 * Math.abs(Math.sin(index * 0.55 + phase)) : shape;
+        const level = moving ? 0.25 + 0.75 * Math.abs(Math.sin(index * 0.7 + phase)) : shape;
         return (
           <View
             key={index}
             style={{
               width: 3,
-              height: 4 + level * 20,
+              height: 6 + level * 16,
               borderRadius: radius.full,
               backgroundColor: color,
-              opacity: moving ? 0.45 + level * 0.55 : played ? 1 : 0.35,
+              opacity: moving ? 0.55 + level * 0.45 : played ? 1 : 0.35,
             }}
           />
         );
       })}
+    </View>
+  );
+}
+
+function openDialer(thread: Thread, onUnavailable: (number: string) => void) {
+  const business = businesses.find((item) => item.id === thread.id || item.name === thread.name);
+  const number = (thread.phone ?? business?.phone ?? '+13055550100').replace(/[^\d+]/g, '');
+  Linking.openURL(`tel:${number}`).catch(() => onUnavailable(number));
+}
+
+function SharedPostBubble({ post }: { post: SharedPost }) {
+  const { colors } = useTheme();
+  const { t } = useTranslation();
+  return (
+    <View style={{ width: 260, gap: spacing.sm }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+        <Avatar source={post.avatar} size={28} />
+        <View style={{ flex: 1, gap: 2 }}>
+          <ThemedText variant="label" numberOfLines={1}>
+            {post.authorName}
+          </ThemedText>
+          <ThemedText variant="caption" numberOfLines={1}>
+            {post.chapter}
+          </ThemedText>
+        </View>
+        {post.postType ? <Badge label={t(`create.types.${post.postType}`)} tone="navy" /> : null}
+      </View>
+      <ThemedText variant="body">{post.body}</ThemedText>
+      {post.place ? (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+          <Icon name="pin" size={14} color={colors.info} />
+          <ThemedText variant="caption" themeColor="text">
+            {post.place}
+          </ThemedText>
+        </View>
+      ) : null}
+      {post.image ? (
+        <Image source={resolvePhoto(post.image)} style={{ width: '100%', height: 140, borderRadius: radius.md }} contentFit="cover" />
+      ) : null}
+      {post.video ? <VideoPreview uri={post.video} height={140} /> : null}
     </View>
   );
 }
@@ -136,27 +180,33 @@ function VoiceBubble({ message, mine }: { message: ChatMessage; mine: boolean })
     });
   };
 
+  const shownSeconds = playing || timeSec > 0.2 ? timeSec : durationSec || 1;
+
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={t('chat.voice')} onPress={() => void toggle()} style={{ gap: 6 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-        <View
-          style={{
-            width: 36,
-            height: 36,
-            borderRadius: radius.full,
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: mine ? colors.background : colors.goldSoft,
-          }}>
-          <View style={{ marginLeft: playing ? 0 : 2 }}>
-            <Icon name={playing ? 'pause' : 'play'} size={13} color={mine ? colors.primary : colors.gold} />
-          </View>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={t('chat.voice')}
+      onPress={() => void toggle()}
+      style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minHeight: 40 }}>
+      <View
+        style={{
+          width: 34,
+          height: 34,
+          borderRadius: radius.full,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: mine ? colors.background : colors.goldSoft,
+        }}>
+        <View style={{ marginLeft: playing ? 0 : 2 }}>
+          <Icon name={playing ? 'pause' : 'play'} size={14} color={mine ? colors.primary : colors.gold} />
         </View>
-        <VoiceWave progress={progress} color={tint} />
       </View>
-      <ThemedText variant="caption" style={{ color: tint, marginLeft: 44 }}>
-        {formatVoice((timeSec > 0 ? timeSec : durationSec || 1) * 1000)}
-      </ThemedText>
+      <View style={{ alignItems: 'flex-start', justifyContent: 'center', gap: 2 }}>
+        <VoiceWave progress={playing ? progress : 1} color={tint} />
+        <ThemedText variant="caption" style={{ color: tint }}>
+          {formatVoice(shownSeconds * 1000)}
+        </ThemedText>
+      </View>
     </Pressable>
   );
 }
@@ -246,9 +296,11 @@ export function ConversationScreen() {
                   gap: spacing.sm,
                 }}>
                 <Icon name="mic" size={16} color={colors.error} />
-                <VoiceWave progress={1} color={colors.error} phase={recordPhase} />
+                <View style={{ flex: 1, alignItems: 'center' }}>
+                  <VoiceWave progress={1} color={colors.error} phase={recordPhase} />
+                </View>
                 <ThemedText variant="caption" themeColor="error">
-                  {formatVoice(recorderState.durationMillis)}
+                  {formatVoice(recorderState.durationMillis || 0)}
                 </ThemedText>
               </View>
             ) : (
@@ -320,7 +372,7 @@ export function ConversationScreen() {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={t('common.call')}
-            onPress={() => router.push({ pathname: '/call-incoming', params: { id: thread.id, video: '0' } })}
+            onPress={() => openDialer(thread, (number) => Alert.alert(t('common.call'), t('chat.noDialer', { number })))}
             style={({ pressed }) => ({
               width: 40,
               height: 40,
@@ -335,7 +387,7 @@ export function ConversationScreen() {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={t('call.camera')}
-            onPress={() => router.push({ pathname: '/call-incoming', params: { id: thread.id, video: '1' } })}
+            onPress={() => openDialer(thread, (number) => Alert.alert(t('common.call'), t('chat.noDialer', { number })))}
             style={({ pressed }) => ({
               width: 40,
               height: 40,
@@ -363,6 +415,19 @@ export function ConversationScreen() {
           }
           renderItem={({ item }) => (
             <View style={{ alignItems: item.mine ? 'flex-end' : 'flex-start', gap: 4 }}>
+              {item.post ? (
+                <View
+                  style={{
+                    maxWidth: '88%',
+                    backgroundColor: colors.card,
+                    borderRadius: radius.xl,
+                    padding: spacing.sm,
+                    borderWidth: 1,
+                    borderColor: colors.divider,
+                  }}>
+                  <SharedPostBubble post={item.post} />
+                </View>
+              ) : (
               <View
                 style={{
                   maxWidth: item.audioUri ? '88%' : '78%',
@@ -379,6 +444,7 @@ export function ConversationScreen() {
                   </ThemedText>
                 )}
               </View>
+              )}
               <ThemedText variant="caption">{formatClock(item.createdAt)}</ThemedText>
             </View>
           )}

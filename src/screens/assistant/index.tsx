@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, FlatList, Pressable, View } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -9,6 +9,7 @@ import { Card } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { IconButton } from '@/components/ui/icon-button';
 import { businesses } from '@/data/content';
+import { useSpeechToText } from '@/hooks/use-speech-to-text';
 import { useTheme } from '@/hooks/use-theme';
 import { useTranslation } from '@/hooks/use-translation';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
@@ -57,19 +58,46 @@ export function AssistantScreen() {
   const [to, setTo] = useState<(typeof languages)[number]>('English');
   const [speaker, setSpeaker] = useState<string | null>(null);
   const [spoken, setSpoken] = useState<string | null>(null);
+  const modeRef = useRef(mode);
+
+  useEffect(() => {
+    modeRef.current = mode;
+  }, [mode]);
 
   const askMessages = useMemo(() => [...messages].reverse(), [messages]);
 
+  const sendValue = useCallback(
+    (value: string) => {
+      const trimmed = value.trim();
+      if (!trimmed) return;
+      if (modeRef.current === 'ask') {
+        dispatch(askAssistant(trimmed));
+      } else {
+        setSpeaker(trimmed);
+        setSpoken(translateText(trimmed, to));
+      }
+      setText('');
+    },
+    [dispatch, to],
+  );
+
+  const { listening, transcript, toggle } = useSpeechToText({
+    onFinal: sendValue,
+  });
+
   const onSend = () => {
-    const value = text.trim();
-    if (!value) return;
-    if (mode === 'ask') {
-      dispatch(askAssistant(value));
-    } else {
-      setSpeaker(value);
-      setSpoken(translateText(value, to));
+    if (listening) return;
+    sendValue(text);
+  };
+
+  const onMic = async () => {
+    const result = await toggle();
+    if (!result.ok) {
+      Alert.alert(
+        t('common.appName'),
+        result.reason === 'denied' ? t('assistant.micDenied') : t('assistant.speechUnavailable'),
+      );
     }
-    setText('');
   };
 
   const swapLanguages = () => {
@@ -272,12 +300,45 @@ export function AssistantScreen() {
           backgroundColor: colors.background,
         }}>
         <View style={{ flex: 1 }}>
-          <TextField bare value={text} onChangeText={setText} placeholder={t('assistant.placeholder')} onSubmitEditing={onSend} returnKeyType="send" />
+          {listening ? (
+            <View
+              style={{
+                minHeight: 52,
+                borderRadius: radius.full,
+                backgroundColor: colors.dangerSoft,
+                alignItems: 'center',
+                paddingHorizontal: spacing.md,
+                flexDirection: 'row',
+                gap: spacing.sm,
+              }}>
+              <Icon name="mic" size={16} color={colors.error} />
+              <ThemedText variant="body" themeColor="error" style={{ flex: 1 }} numberOfLines={2}>
+                {transcript || t('assistant.listening')}
+              </ThemedText>
+            </View>
+          ) : (
+            <TextField bare value={text} onChangeText={setText} placeholder={t('assistant.placeholder')} onSubmitEditing={onSend} returnKeyType="send" />
+          )}
         </View>
         <Pressable
           accessibilityRole="button"
+          accessibilityLabel={listening ? t('assistant.listening') : t('assistant.voice')}
+          onPress={() => void onMic()}
+          style={({ pressed }) => ({
+            width: 52,
+            height: 52,
+            borderRadius: radius.full,
+            backgroundColor: listening ? colors.error : colors.search,
+            alignItems: 'center',
+            justifyContent: 'center',
+            opacity: pressed ? 0.85 : 1,
+          })}>
+          <Icon name="mic" size={20} color={listening ? colors.textInverse : colors.text} />
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
           accessibilityLabel={t('assistant.placeholder')}
-          disabled={!text.trim()}
+          disabled={!text.trim() || listening}
           onPress={onSend}
           style={({ pressed }) => ({
             width: 52,
@@ -286,7 +347,7 @@ export function AssistantScreen() {
             backgroundColor: colors.gold,
             alignItems: 'center',
             justifyContent: 'center',
-            opacity: !text.trim() ? 0.4 : pressed ? 0.85 : 1,
+            opacity: !text.trim() || listening ? 0.4 : pressed ? 0.85 : 1,
           })}>
           <Icon name="send" size={20} color={colors.onGold} />
         </Pressable>

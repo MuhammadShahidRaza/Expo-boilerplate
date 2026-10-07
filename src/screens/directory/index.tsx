@@ -18,7 +18,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useTranslation } from '@/hooks/use-translation';
 import { radius, spacing } from '@/theme';
 
-const filters = ['all', 'restaurants', 'tax', 'barber', 'dealer'] as const;
+const primaryFilters = ['all', 'restaurants', 'tax', 'barber', 'dealer'] as const;
 
 export function DirectoryScreen() {
   const { colors } = useTheme();
@@ -27,6 +27,7 @@ export function DirectoryScreen() {
   const initialFilter = typeof params.filter === 'string' ? params.filter : 'all';
   const [query, setQuery] = useState(typeof params.q === 'string' ? params.q : '');
   const [filter, setFilter] = useState(initialFilter);
+  const filters = primaryFilters.includes(filter as (typeof primaryFilters)[number]) ? primaryFilters : [...primaryFilters, filter];
 
   const items = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -60,7 +61,11 @@ export function DirectoryScreen() {
         {filters.map((item) => (
           <Chip
             key={item}
-            label={t(`directory.${item}`)}
+            label={
+              item === 'all' || item === 'restaurants' || item === 'tax' || item === 'barber' || item === 'dealer'
+                ? t(`directory.${item}`)
+                : t(`services.${item as 'barber'}`)
+            }
             selected={filter === item}
             tone="navy"
             onPress={() => setFilter(item)}

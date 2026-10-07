@@ -9,6 +9,7 @@ import { PostCard } from '@/components/feed/post-card';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { Avatar } from '@/components/ui/avatar';
+import { Icon } from '@/components/ui/icon';
 import { IconButton } from '@/components/ui/icon-button';
 import { chapters } from '@/data/catalog';
 import { resolvePhoto } from '@/data/images';
@@ -16,7 +17,9 @@ import { useSession } from '@/context/session-context';
 import { useTheme } from '@/hooks/use-theme';
 import { useTranslation } from '@/hooks/use-translation';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { toggleFollow } from '@/store/slices/world';
+import { toggleFollow, unblockAuthor } from '@/store/slices/world';
+import { confirmAction } from '@/utils/confirm';
+import { visiblePosts } from '@/utils/feed';
 import { radius, spacing } from '@/theme';
 
 const tabs = ['myPosts', 'myListings', 'myEvents'] as const;
@@ -30,41 +33,57 @@ function initials(name: string) {
     .join('');
 }
 
+function safeDecode(value: string) {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
 export function MemberProfileScreen() {
   const { colors } = useTheme();
   const { t } = useTranslation();
   const { user } = useSession();
   const dispatch = useAppDispatch();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const memberId = typeof id === 'string' ? id : '';
+  const routeId = typeof id === 'string' ? id : '';
+  const memberId = safeDecode(routeId);
   const world = useAppSelector((state) => state.world);
-  const following = world.following.includes(memberId);
+  const following = world.following.includes(routeId);
   const insets = useSafeAreaInsets();
   const [tab, setTab] = useState<(typeof tabs)[number]>('myPosts');
 
-  const decodedName = decodeURIComponent(memberId);
-  const isMe = memberId === 'me' || decodedName === user?.fullName;
-  const known =
-    isMe ||
-    world.listings.some((listing) => listing.sellerName === decodedName) ||
-    world.threads.some((thread) => thread.id === memberId || thread.name === decodedName);
-  const displayName = useMemo(() => {
-    if (isMe) return user?.fullName ?? 'Marcus Williams';
-    if (memberId.toLowerCase().includes('marie')) return 'Marie Celestin';
-    return decodeURIComponent(memberId).replace(/-/g, ' ');
-  }, [isMe, memberId, user?.fullName]);
+  const matchedListing = world.listings.find(
+    (listing) => listing.sellerName === memberId || listing.sellerName === routeId,
+  );
+  const matchedThread = world.threads.find(
+    (thread) =>
+      thread.id === routeId || thread.id === memberId || thread.name === memberId || thread.name === routeId,
+  );
+  const loggedInName = user?.fullName;
+  const isMe =
+    routeId === 'me' ||
+    memberId === 'me' ||
+    (Boolean(loggedInName) && (memberId === loggedInName || routeId === loggedInName));
+  const known = isMe || Boolean(matchedListing) || Boolean(matchedThread);
+  const displayName = isMe
+    ? (user?.fullName ?? 'Marcus Williams')
+    : (matchedThread?.name ?? matchedListing?.sellerName ?? memberId);
 
-  const bio = isMe
-    ? world.bio
-    : 'Community advocate & local food lover.';
+  const bio = isMe ? world.bio : 'Community advocate & local food lover.';
+  const sellerListings = world.listings.filter((listing) =>
+    isMe ? listing.mine || listing.sellerName === displayName : listing.sellerName === displayName || listing.sellerName === memberId,
+  );
+  const memberEvents = world.events.filter((event) => (isMe ? event.mine || event.host === displayName : event.host === displayName));
 
+  const blocked = !isMe && (world.blockedAuthors ?? []).includes(displayName);
   const posts = useMemo(() => {
-    if (isMe) return world.posts.filter((post) => post.mine || post.authorName === user?.fullName);
-    if (displayName.toLowerCase().includes('marie')) {
-      return world.posts.filter((post) => post.authorName.toLowerCase().includes('marie'));
-    }
-    return world.posts.filter((post) => !post.official);
-  }, [displayName, isMe, user?.fullName, world.posts]);
+    if (!known) return [];
+    const visible = visiblePosts(world.posts, world.blockedAuthors, world.reportedPostIds);
+    if (isMe) return visible.filter((post) => post.mine || post.authorName === user?.fullName);
+    return visible.filter((post) => post.authorName === displayName);
+  }, [displayName, isMe, known, user?.fullName, world.blockedAuthors, world.posts, world.reportedPostIds]);
 
   if (!known) {
     return (
@@ -107,13 +126,31 @@ export function MemberProfileScreen() {
 
       <View style={{ paddingHorizontal: spacing.md, paddingTop: spacing.xxl, gap: spacing.md }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
-          <ThemedText variant="title" style={{ flex: 1 }}>
-            {displayName}
-          </ThemedText>
+          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <ThemedText variant="title">{displayName}</ThemedText>
+            {isMe && user?.verified ? <Icon name="verified" size={20} color={colors.info} /> : null}
+          </View>
           <Button
-            title={following ? t('common.following') : t('common.follow')}
-            variant={following ? 'outline' : 'secondary'}
-            onPress={() => dispatch(toggleFollow(memberId))}
+            title={blocked ? t('post.unblock') : following ? t('common.following') : t('common.follow')}
+            variant={following || blocked ? 'outline' : 'secondary'}
+            onPress={() => {
+              if (blocked) {
+                confirmAction({
+                  title: t('post.unblockTitle', { name: displayName }),
+                  message: t('post.unblockBody'),
+                  confirmLabel: t('post.unblock'),
+                  cancelLabel: t('common.cancel'),
+                  onConfirm: () => dispatch(unblockAuthor(displayName)),
+                });
+                return;
+              }
+              confirmAction({
+                title: following ? t('common.unfollowTitle', { name: displayName }) : t('common.followTitle', { name: displayName }),
+                confirmLabel: following ? t('common.following') : t('common.follow'),
+                cancelLabel: t('common.cancel'),
+                onConfirm: () => dispatch(toggleFollow(routeId)),
+              });
+            }}
             style={{ alignSelf: 'auto', minHeight: 40, paddingHorizontal: spacing.md }}
           />
         </View>
@@ -190,13 +227,32 @@ export function MemberProfileScreen() {
           ? posts.map((post) => <PostCard key={post.id} post={post} />)
           : null}
         {tab === 'myListings' ? (
-          <ThemedText variant="body">{t('business.emptyListings')}</ThemedText>
+          sellerListings.length === 0 ? (
+            <ThemedText variant="body">{t('business.emptyListings')}</ThemedText>
+          ) : (
+            sellerListings.map((listing) => (
+              <Pressable
+                key={listing.id}
+                accessibilityRole="button"
+                onPress={() => router.push(`/listing/${listing.id}`)}
+                style={{
+                  backgroundColor: colors.card,
+                  borderRadius: radius.xl,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  padding: spacing.md,
+                }}>
+                <ThemedText variant="headline">{listing.title}</ThemedText>
+                <ThemedText variant="caption">{listing.sellerName}</ThemedText>
+              </Pressable>
+            ))
+          )
         ) : null}
         {tab === 'myEvents' ? (
-          world.events.length === 0 ? (
+          memberEvents.length === 0 ? (
             <ThemedText variant="body">{t('business.emptyEvents')}</ThemedText>
           ) : (
-            world.events.map((event) => (
+            memberEvents.map((event) => (
               <Pressable
                 key={event.id}
                 accessibilityRole="button"

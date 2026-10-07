@@ -16,6 +16,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useTranslation } from '@/hooks/use-translation';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { setGoing } from '@/store/slices/world';
+import { confirmAction } from '@/utils/confirm';
 import { radius, spacing } from '@/theme';
 
 export function EventDetailScreen() {
@@ -46,7 +47,15 @@ export function EventDetailScreen() {
               title={t('event.going')}
               variant="primary"
               icon="check"
-              onPress={() => dispatch(setGoing({ id: event.id, going: true }))}
+              onPress={() =>
+                confirmAction({
+                  title: t('event.goingTitle'),
+                  message: t('event.goingBody'),
+                  confirmLabel: t('event.going'),
+                  cancelLabel: t('common.cancel'),
+                  onConfirm: () => dispatch(setGoing({ id: event.id, going: true })),
+                })
+              }
             />
           </View>
           <View style={{ flex: 1 }}>
@@ -54,7 +63,15 @@ export function EventDetailScreen() {
               title={t('event.notGoing')}
               variant="softDanger"
               icon="close"
-              onPress={() => dispatch(setGoing({ id: event.id, going: false }))}
+              onPress={() =>
+                confirmAction({
+                  title: t('event.notGoingTitle'),
+                  message: t('event.notGoingBody'),
+                  confirmLabel: t('event.notGoing'),
+                  cancelLabel: t('common.cancel'),
+                  onConfirm: () => dispatch(setGoing({ id: event.id, going: false })),
+                })
+              }
             />
           </View>
         </View>

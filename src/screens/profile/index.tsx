@@ -51,9 +51,9 @@ export function ProfileScreen() {
   const caption = bioLines.slice(1).join('\n').trim();
   const myName = user?.fullName ?? '';
   const myPosts = world.posts.filter((post) => post.mine || post.authorName === myName);
-  const myPolls = world.polls.filter((poll) => poll.authorName === myName);
-  const myListings = world.listings.filter((listing) => listing.sellerName === myName);
-  const myEvents = world.events.filter((event) => event.host === myName);
+  const myPolls = world.polls.filter((poll) => poll.mine || poll.authorName === myName);
+  const myListings = world.listings.filter((listing) => listing.mine || listing.sellerName === myName);
+  const myEvents = world.events.filter((event) => event.mine || event.host === myName);
   const postsCount = myPosts.length;
 
   return (
@@ -77,9 +77,10 @@ export function ProfileScreen() {
 
       <View style={{ paddingHorizontal: spacing.md, gap: spacing.md, paddingTop: spacing.sm }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-          <ThemedText variant="title" style={{ flex: 1 }}>
-            {user?.fullName}
-          </ThemedText>
+          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <ThemedText variant="title">{user?.fullName}</ThemedText>
+            {user?.verified ? <Icon name="verified" size={20} color={colors.info} /> : null}
+          </View>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={t('profile.edit')}
@@ -187,10 +188,10 @@ export function ProfileScreen() {
               <ThemedText variant="body">{t('empty.activities')}</ThemedText>
             ) : null}
             {myPosts.map((post) => (
-              <PostCard key={post.id} post={post} />
+              <PostCard key={post.id} post={post.mine && myName ? { ...post, authorName: myName } : post} />
             ))}
             {myPolls.map((poll) => (
-              <PollCard key={poll.id} poll={poll} />
+              <PollCard key={poll.id} poll={poll.mine && myName ? { ...poll, authorName: myName } : poll} />
             ))}
           </View>
         ) : null}

@@ -13,8 +13,13 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       'expo-image-picker',
       {
         photosPermission: 'Allow CC World to access your photos.',
+        cameraPermission: 'Allow CC World to use the camera for posts.',
       },
     ]);
+  }
+
+  if (!hasPlugin(plugins, 'expo-video')) {
+    plugins.push('expo-video');
   }
 
   if (!hasPlugin(plugins, 'expo-location')) {
@@ -42,6 +47,10 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         color: '#051229',
       },
     ]);
+  }
+
+  if (!hasPlugin(plugins, 'expo-dev-client')) {
+    plugins.push('expo-dev-client');
   }
 
   return {

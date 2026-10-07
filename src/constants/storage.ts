@@ -5,5 +5,6 @@ export const STORAGE_KEYS = {
   account: 'account',
   session: 'session',
   rememberedEmail: 'remembered-email',
+  identity: 'identity',
   rtlAttempt: 'rtl-attempt',
 } as const;

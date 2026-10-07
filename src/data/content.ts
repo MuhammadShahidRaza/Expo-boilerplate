@@ -8,6 +8,7 @@ export type Comment = {
   avatar: PhotoKey;
   body: string;
   createdAt: string;
+  mine?: boolean;
 };
 
 export type Post = {
@@ -18,6 +19,9 @@ export type Post = {
   createdAt: string;
   body: string;
   image?: PhotoKey | string;
+  video?: string;
+  place?: string;
+  postType?: string;
   likes: number;
   shares: number;
   liked: boolean;
@@ -28,7 +32,7 @@ export type Post = {
   comments: Comment[];
 };
 
-export type PollOption = { id: string; label: string; votes: number };
+export type PollOption = { id: string; label: string; votes: number; image?: string };
 
 export type Poll = {
   id: string;
@@ -39,6 +43,21 @@ export type Poll = {
   options: PollOption[];
   votedId: string | null;
   image?: string;
+  mine?: boolean;
+  likes: number;
+  liked: boolean;
+  comments: Comment[];
+};
+
+export type SharedPost = {
+  authorName: string;
+  avatar: PhotoKey | string;
+  chapter: string;
+  body: string;
+  image?: PhotoKey | string;
+  video?: string;
+  place?: string;
+  postType?: string;
 };
 
 export type ChatMessage = {
@@ -48,6 +67,7 @@ export type ChatMessage = {
   createdAt: string;
   audioUri?: string;
   durationMs?: number;
+  post?: SharedPost;
 };
 
 export type Thread = {
@@ -57,6 +77,7 @@ export type Thread = {
   kind: 'user' | 'business' | 'organization';
   online: boolean;
   unread: number;
+  phone?: string;
   messages: ChatMessage[];
 };
 
@@ -79,6 +100,7 @@ export type Listing = {
   sellerAvatar: PhotoKey;
   description: string;
   quantity: number;
+  mine?: boolean;
 };
 
 export type EventItem = {
@@ -95,6 +117,7 @@ export type EventItem = {
   image: PhotoKey | string;
   going: boolean | null;
   attendees: number;
+  mine?: boolean;
 };
 
 export type Notice = {
@@ -152,6 +175,14 @@ const sampleComments: Comment[] = [
     body: 'Great initiative. I can bring extra bags.',
     createdAt: ago(50),
   },
+  {
+    id: 'c3',
+    author: 'Marcus Williams',
+    avatar: 'portraitM',
+    body: 'Count me in — I will bring water and trash bags.',
+    createdAt: ago(20),
+    mine: true,
+  },
 ];
 
 export const seedPosts: Post[] = [
@@ -184,6 +215,49 @@ export const seedPosts: Post[] = [
     officialTitle: 'ROAD CLOSURE',
     comments: sampleComments,
   },
+  {
+    id: 'post-mine-market',
+    authorName: 'Marcus Williams',
+    avatar: 'portraitM',
+    chapter: 'Little Haiti Miami',
+    createdAt: ago(30),
+    body: 'Fresh pikliz and griot plates are out at the Saturday market. Come by before noon if you want the first batch.',
+    image: 'food',
+    place: 'Little Haiti Park',
+    postType: 'marketplace',
+    likes: 18,
+    shares: 3,
+    liked: false,
+    saved: false,
+    mine: true,
+    comments: sampleComments,
+  },
+  {
+    id: 'post-mine-volunteer',
+    authorName: 'Marcus Williams',
+    avatar: 'portraitM',
+    chapter: 'Little Haiti Miami',
+    createdAt: ago(90),
+    body: 'Looking for two more volunteers for the park clean-up. I can drive from the cultural center at 8:30.',
+    postType: 'volunteer',
+    likes: 9,
+    shares: 1,
+    liked: true,
+    saved: false,
+    mine: true,
+    comments: [],
+  },
+];
+
+export const seedPollComments: Comment[] = [
+  { id: 'pc1', author: 'Marie Celestin', avatar: 'portrait', body: 'Silver Falls. The wildflowers are already out along the loop.', createdAt: ago(220) },
+  { id: 'pc2', author: 'Jean-Baptiste D.', avatar: 'portraitM', body: 'Dog Mountain has the view, but the last mile is steep.', createdAt: ago(200) },
+  { id: 'pc3', author: 'Sophie Blanc', avatar: 'portrait', body: 'I can drive if we pick Silver Falls.', createdAt: ago(180) },
+  { id: 'pc4', author: 'Pierre Laurent', avatar: 'portraitM', body: 'Eagle Creek stays shaded. Better if it is hot.', createdAt: ago(160) },
+  { id: 'pc5', author: 'Nadia Joseph', avatar: 'portrait', body: 'Bringing the kids, so the canyon loop is easier.', createdAt: ago(140) },
+  { id: 'pc6', author: 'Marc Antoine', avatar: 'portraitM', body: 'Count me in for whichever trail wins.', createdAt: ago(120) },
+  { id: 'pc7', author: 'Lovely Pierre', avatar: 'portrait', body: 'We should leave by 7 so parking is open.', createdAt: ago(90) },
+  { id: 'pc8', author: 'Yves Baptiste', avatar: 'portraitM', body: 'I will bring water and a first-aid kit.', createdAt: ago(70) },
 ];
 
 export const seedPolls: Poll[] = [
@@ -194,10 +268,30 @@ export const seedPolls: Poll[] = [
     createdAt: ago(300),
     question: 'Which trail should our Saturday morning group tackle for the late spring wildflower bloom?',
     votedId: null,
+    likes: 24,
+    liked: false,
+    comments: seedPollComments,
     options: [
       { id: 'opt-1', label: 'Silver Falls Canyon Loop', votes: 134 },
       { id: 'opt-2', label: 'Dog Mountain Summit', votes: 99 },
       { id: 'opt-3', label: 'Eagle Creek to Punchbowl', votes: 85 },
+    ],
+  },
+  {
+    id: 'poll-mine-lanes',
+    authorName: 'Marcus Williams',
+    avatar: 'portraitM',
+    createdAt: ago(200),
+    question: 'Should we add weekend bike lanes along the market street?',
+    votedId: null,
+    mine: true,
+    likes: 6,
+    liked: false,
+    comments: [],
+    options: [
+      { id: 'opt-mine-1', label: 'Yes, full weekend lanes', votes: 12 },
+      { id: 'opt-mine-2', label: 'Keep one traffic lane open', votes: 7 },
+      { id: 'opt-mine-3', label: 'No change for now', votes: 4 },
     ],
   },
 ];
@@ -210,6 +304,7 @@ export const seedThreads: Thread[] = [
     kind: 'user',
     online: true,
     unread: 2,
+    phone: '+13055550101',
     messages: [
       { id: 'm1', mine: false, text: 'Hey! Are you going to the community clean-up on Saturday?', createdAt: ago(40) },
       { id: 'm2', mine: true, text: 'Yes for sure! What time are you heading over?', createdAt: ago(37) },
@@ -220,7 +315,7 @@ export const seedThreads: Thread[] = [
     ],
   },
   {
-    id: 'chez',
+    id: 'chez-marie',
     name: 'Chez Marie Restaurant',
     avatar: 'cafe',
     kind: 'business',
@@ -235,6 +330,7 @@ export const seedThreads: Thread[] = [
     kind: 'user',
     online: true,
     unread: 0,
+    phone: '+13055550102',
     messages: [{ id: 'j1', mine: false, text: 'Thanks for the info bro', createdAt: ago(60) }],
   },
   {
@@ -324,6 +420,32 @@ export const seedListings: Listing[] = [
     description: 'Small-batch pikliz made this week. Three jars, best within two weeks.',
     quantity: 3,
   },
+  {
+    id: 'mine-cooler',
+    title: 'Blue cooler',
+    price: 25,
+    category: 'electronics',
+    condition: 'used',
+    image: 'phone',
+    sellerName: 'Marcus Williams',
+    sellerAvatar: 'portraitM',
+    description: 'Small cooler that still keeps drinks cold through a Saturday market.',
+    quantity: 1,
+    mine: true,
+  },
+  {
+    id: 'mine-chair',
+    title: 'Extra folding chairs',
+    price: 40,
+    category: 'furniture',
+    condition: 'used',
+    image: 'chair',
+    sellerName: 'Marcus Williams',
+    sellerAvatar: 'portraitM',
+    description: 'Four folding chairs from last year\'s festival booth. Pickup in Little Haiti.',
+    quantity: 4,
+    mine: true,
+  },
 ];
 
 export const seedEvents: EventItem[] = [
@@ -358,6 +480,22 @@ export const seedEvents: EventItem[] = [
     going: null,
     attendees: 38,
   },
+  {
+    id: 'mine-cookout',
+    title: 'Block cookout',
+    day: '28',
+    month: 'Sep',
+    place: 'Little Haiti Miami',
+    dateLabel: 'Sunday, September 28, 2026',
+    time: '12:00 PM – 4:00 PM',
+    address: 'NW 2nd Ave, Miami, FL',
+    about: 'A small cookout for neighbors. Bring a chair if you have one. I will handle the grill.',
+    host: 'Marcus Williams',
+    image: 'festival',
+    going: true,
+    attendees: 16,
+    mine: true,
+  },
 ];
 
 export const seedNotices: Notice[] = [
@@ -369,6 +507,38 @@ export const seedNotices: Notice[] = [
   { id: 'n6', kind: 'event', body: 'Reminder: Haitian Heritage Festival is in 3 days. Don’t forget!', createdAt: ago(360), unread: false, section: 'earlier' },
   { id: 'n7', kind: 'like', body: 'Pierre Laurent and 6 others liked your comment.', createdAt: ago(400), unread: false, section: 'earlier' },
 ];
+
+function shop(
+  id: string,
+  name: string,
+  category: string,
+  filter: string,
+  image: PhotoKey,
+  initials: string,
+  blurb: string,
+): Business {
+  return {
+    id,
+    name,
+    category,
+    filter,
+    image,
+    initials,
+    blurb,
+    rating: 4.5,
+    ratings: 24,
+    distance: '1.5 mi',
+    tier: 'basic',
+    verified: true,
+    address: 'Little Haiti, Miami, FL',
+    hours: 'Mon–Sat 9AM–6PM',
+    open: true,
+    phone: '+13055550120',
+    followers: '180',
+    views: '260',
+    menu: [],
+  };
+}
 
 export const businesses: Business[] = [
   {
@@ -460,6 +630,15 @@ export const businesses: Business[] = [
     views: '2.1K',
     menu: [],
   },
+  shop('miami-motors', 'Miami Motor Works', 'Mechanic Shop', 'mechanic', 'build', 'MM', 'Oil changes, brakes, and diagnostics for the neighborhood.'),
+  shop('celestin-law', 'Celestin Law Office', 'Lawyer', 'lawyer', 'interior', 'CL', 'Immigration and family matters, explained in Creole and English.'),
+  shop('lakay-salon', 'Lakay Beauty Salon', 'Beauty Salon', 'salon', 'portrait', 'LS', 'Braids, color, and cuts a few blocks from the cultural center.'),
+  shop('nw-plumbing', 'NW Plumbing Co.', 'Plumber', 'plumber', 'build', 'NP', 'Same-week repairs for leaks, drains, and water heaters.'),
+  shop('cool-breeze', 'Cool Breeze AC', 'AC Company', 'ac', 'interior', 'CB', 'Install and service for homes and small shops.'),
+  shop('shield-insurance', 'Shield Insurance Agency', 'Insurance Agency', 'insurance', 'cafe', 'SI', 'Auto and home policies with a local agent.'),
+  shop('kompa-bar', 'Kompa Bar & Club', 'Bar & Club', 'bar', 'festival', 'KB', 'Live kompa on weekends and a kitchen that stays open late.'),
+  shop('lh-gas', 'Little Haiti Gas', 'Gas Station', 'gas', 'build', 'LG', 'Fuel, snacks, and air, open early on NW 2nd Avenue.'),
+  shop('lh-motors', 'Little Haiti Motors', 'Car Dealer', 'dealer', 'build', 'LM', 'Used cars from the neighborhood, checked before they are listed.'),
 ];
 
 export const seedAssistant: AssistantMessage[] = [

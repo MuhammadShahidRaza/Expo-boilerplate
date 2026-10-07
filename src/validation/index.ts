@@ -56,7 +56,7 @@ export function validatePasswordChange(
 ) {
   const errors: FieldErrors<'current' | 'next' | 'confirm'> = {};
   if (!values.current) errors.current = t('validation.passwordRequired');
-  if (!isStrongPassword(values.next)) errors.next = t('validation.passwordRules');
+  if (!isSignupPassword(values.next)) errors.next = t('validation.passwordWeak');
   if (values.confirm !== values.next) errors.confirm = t('validation.passwordMismatch');
   return errors;
 }
@@ -92,5 +92,19 @@ export function validateListing(
   if (!values.category) errors.category = t('validation.categoryRequired');
   const price = Number(values.price);
   if (!values.price.trim() || Number.isNaN(price) || price <= 0) errors.price = t('validation.priceRequired');
+  return errors;
+}
+
+export function validateIdentity(
+  values: { nic: string; ssn: string; passport: string; license: string },
+  t: Translator,
+) {
+  const errors: FieldErrors<'nic' | 'ssn' | 'passport' | 'license'> = {};
+  if (values.nic.trim().length < 5) errors.nic = t('verify.required');
+  const digits = values.ssn.replace(/\D/g, '');
+  if (!values.ssn.trim()) errors.ssn = t('verify.required');
+  else if (digits.length !== 9) errors.ssn = t('verify.ssnInvalid');
+  if (values.passport.trim() && values.passport.trim().length < 6) errors.passport = t('verify.required');
+  if (values.license.trim() && values.license.trim().length < 5) errors.license = t('verify.required');
   return errors;
 }

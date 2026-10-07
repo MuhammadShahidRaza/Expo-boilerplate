@@ -16,7 +16,7 @@ import { spacing } from '@/theme';
 
 export function LoginScreen() {
   const { t } = useTranslation();
-  const { signInSocial, rememberedEmail } = useSession();
+  const { signIn, signInAlpha, hasAccount, rememberedEmail } = useSession();
   const [email, setEmail] = useState(rememberedEmail);
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
@@ -31,10 +31,22 @@ export function LoginScreen() {
     if (Object.keys(next).length > 0) return;
 
     setLoading(true);
+    if (hasAccount(email)) {
+      const result = await signIn(email, password, false);
+      setLoading(false);
+      if (result === 'invalid') {
+        setErrors({ password: t('validation.passwordWrong') });
+        return;
+      }
+      if (result !== 'ok') return;
+      router.replace('/home');
+      return;
+    }
+
     const trimmed = email.trim();
     const rawName = trimmed.split('@')[0]?.replace(/[._-]+/g, ' ').trim() || 'Member';
     const name = rawName.replace(/\b\p{L}/gu, (letter) => letter.toLocaleUpperCase());
-    await signInSocial({ fullName: name, email: trimmed });
+    await signInAlpha({ fullName: name, email: trimmed, password });
     setLoading(false);
     router.replace('/home');
   }

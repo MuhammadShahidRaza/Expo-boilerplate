@@ -71,6 +71,7 @@ export const ht: Translation = {
     passwordRequired: 'Antre modpas ou',
     passwordWeak: 'Omwen 8 karaktè, ak yon chif ak yon karaktè espesyal',
     passwordMismatch: 'Modpas yo pa menm',
+    passwordWrong: 'Modpas la pa kòrèk',
     nameRequired: 'Antre non konplè ou',
     mustAgree: 'Aksepte kondisyon yo pou kontinye',
     otpRequired: 'Antre kòd 4 chif la',

@@ -14,6 +14,7 @@ import { useTranslation } from '@/hooks/use-translation';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { markThreadRead } from '@/store/slices/world';
 import { radius, spacing } from '@/theme';
+import { stableList } from '@/utils/feed';
 import { formatAgo } from '@/utils/time';
 
 type Filter = 'all' | Thread['kind'];
@@ -23,6 +24,7 @@ export function ChatScreen() {
   const { colors } = useTheme();
   const dispatch = useAppDispatch();
   const threads = useAppSelector((state) => state.world.threads);
+  const blockedAuthors = useAppSelector((state) => stableList(state.world.blockedAuthors));
   const insets = useSafeAreaInsets();
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<Filter>('all');
@@ -37,12 +39,14 @@ export function ChatScreen() {
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
     return threads.filter((thread) => {
+      if (blockedAuthors.includes(thread.name)) return false;
       if (filter !== 'all' && thread.kind !== filter) return false;
       if (!q) return true;
-      const last = thread.messages[thread.messages.length - 1]?.text ?? '';
+      const latest = thread.messages[thread.messages.length - 1];
+      const last = latest?.post?.body ?? latest?.text ?? '';
       return thread.name.toLowerCase().includes(q) || last.toLowerCase().includes(q);
     });
-  }, [filter, query, threads]);
+  }, [blockedAuthors, filter, query, threads]);
 
   return (
     <Screen tab scroll={false} padded={false}>
@@ -106,7 +110,7 @@ export function ChatScreen() {
                       {item.name}
                     </ThemedText>
                     <ThemedText variant="subhead" themeColor="textSecondary" numberOfLines={1}>
-                      {last?.audioUri && !last.text ? t('chat.voice') : (last?.text ?? '')}
+                      {last?.post?.body || (last?.audioUri && !last.text ? t('chat.voice') : (last?.text ?? ''))}
                     </ThemedText>
                   </View>
                   <View style={{ alignItems: 'flex-end', gap: 8, minWidth: 36 }}>

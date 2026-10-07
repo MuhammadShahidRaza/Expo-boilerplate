@@ -27,6 +27,7 @@ import { useTranslation } from '@/hooks/use-translation';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { addCommunity, removeCommunity, setActiveCommunity } from '@/store/slices/world';
 import { radius, spacing } from '@/theme';
+import { visiblePosts } from '@/utils/feed';
 
 function initials(name: string) {
   return name
@@ -294,7 +295,7 @@ export function HomeScreen() {
         ))}
       </ScrollView>
 
-      {world.posts.map((post) => (
+      {visiblePosts(world.posts, world.blockedAuthors, world.reportedPostIds).map((post) => (
         <PostCard key={post.id} post={post} />
       ))}
       {world.polls.map((poll) => (

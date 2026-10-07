@@ -4,12 +4,15 @@ import { PostCard } from '@/components/feed/post-card';
 import { ScreenHeader } from '@/components/ui/screen-header';
 import { useTranslation } from '@/hooks/use-translation';
 import { useAppSelector } from '@/store/hooks';
+import { visiblePosts } from '@/utils/feed';
 import { View } from 'react-native';
 import { spacing } from '@/theme';
 
 export function SavedScreen() {
   const { t } = useTranslation();
-  const posts = useAppSelector((state) => state.world.posts.filter((post) => post.saved));
+  const posts = useAppSelector((state) =>
+    visiblePosts(state.world.posts, state.world.blockedAuthors, state.world.reportedPostIds).filter((post) => post.saved),
+  );
 
   return (
     <Screen>

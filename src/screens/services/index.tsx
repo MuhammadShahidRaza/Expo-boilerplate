@@ -49,9 +49,19 @@ export function ServicesScreen() {
             <Pressable
               accessibilityRole="button"
               onPress={() => {
+                if (category.id === 'marketplace') {
+                  router.push('/marketplace');
+                  return;
+                }
+                if (category.id === 'jobs' || category.id === 'training') {
+                  router.push('/jobs');
+                  return;
+                }
+                if (category.chips.length === 0) {
+                  router.push('/directory');
+                  return;
+                }
                 setExpanded(open ? '' : category.id);
-                if (category.id === 'marketplace') router.push('/marketplace');
-                if (category.id === 'jobs') router.push('/jobs');
               }}
               style={{ flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md }}>
               <View
@@ -82,10 +92,7 @@ export function ServicesScreen() {
                     onPress={() =>
                       router.push({
                         pathname: '/directory',
-                        params: {
-                          filter:
-                            chipId === 'tax' ? 'tax' : chipId === 'barber' ? 'barber' : chipId,
-                        },
+                        params: { filter: chipId },
                       })
                     }
                   />

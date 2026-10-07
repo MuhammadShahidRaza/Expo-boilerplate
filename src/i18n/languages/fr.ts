@@ -70,6 +70,7 @@ export const fr: Translation = {
     passwordRequired: 'Entrez votre mot de passe',
     passwordWeak: '8 caractères minimum, avec un chiffre et un caractère spécial',
     passwordMismatch: 'Les mots de passe ne correspondent pas',
+    passwordWrong: 'Mot de passe incorrect',
     nameRequired: 'Entrez votre nom complet',
     mustAgree: 'Acceptez les conditions pour continuer',
     otpRequired: 'Entrez le code à 4 chiffres',

@@ -18,6 +18,8 @@ import { useAppDispatch } from '@/store/hooks';
 import { addPoll } from '@/store/slices/world';
 import { fontFamily, radius, spacing } from '@/theme';
 
+type DraftOption = { label: string; image: string | null };
+
 export function CreatePollScreen() {
   const { t } = useTranslation();
   const { colors } = useTheme();
@@ -25,7 +27,11 @@ export function CreatePollScreen() {
   const dispatch = useAppDispatch();
   const { pickImage } = useImagePicker();
   const [question, setQuestion] = useState('');
-  const [options, setOptions] = useState(['', '', '']);
+  const [options, setOptions] = useState<DraftOption[]>([
+    { label: '', image: null },
+    { label: '', image: null },
+    { label: '', image: null },
+  ]);
   const [attachment, setAttachment] = useState<string | null>(null);
 
   const attach = async () => {
@@ -34,7 +40,7 @@ export function CreatePollScreen() {
   };
 
   const updateOption = (index: number, value: string) => {
-    setOptions((current) => current.map((item, i) => (i === index ? value : item)));
+    setOptions((current) => current.map((item, i) => (i === index ? { ...item, label: value } : item)));
   };
 
   const removeOption = (index: number) => {
@@ -44,11 +50,29 @@ export function CreatePollScreen() {
 
   const addOption = () => {
     if (options.length >= 6) return;
-    setOptions((current) => [...current, '']);
+    setOptions((current) => [...current, { label: '', image: null }]);
+  };
+
+  const attachOptionImage = async (index: number) => {
+    const result = await pickImage();
+    if (result.status !== 'ok') return;
+    setOptions((current) => current.map((item, i) => (i === index ? { ...item, image: result.uri } : item)));
+  };
+
+  const addOptionImage = async () => {
+    const result = await pickImage();
+    if (result.status !== 'ok') return;
+    setOptions((current) => {
+      const empty = current.findIndex((item) => !item.image);
+      const target = empty === -1 ? current.length - 1 : empty;
+      return current.map((item, i) => (i === target ? { ...item, image: result.uri } : item));
+    });
   };
 
   const onPublish = () => {
-    const filled = options.map((item) => item.trim()).filter(Boolean);
+    const filled = options
+      .map((item) => ({ label: item.label.trim(), image: item.image ?? undefined }))
+      .filter((item) => item.label);
     if (question.trim().length < 8) {
       Alert.alert(t('validation.pollQuestion'));
       return;
@@ -177,6 +201,12 @@ export function CreatePollScreen() {
             {t('create.options')}
           </ThemedText>
           <Badge label={t('create.choices', { count: options.length })} tone="navy" />
+          <Pressable accessibilityRole="button" onPress={addOptionImage} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <Icon name="image" size={14} color={colors.info} />
+            <ThemedText variant="caption" themeColor="link">
+              {t('create.addImage')}
+            </ThemedText>
+          </Pressable>
         </View>
 
         <View style={{ gap: spacing.sm }}>
@@ -206,13 +236,19 @@ export function CreatePollScreen() {
                 </ThemedText>
               </View>
               <TextInput
-                value={option}
+                value={option.label}
                 onChangeText={(value) => updateOption(index, value)}
                 placeholder={`${t('create.options')} ${index + 1}`}
                 placeholderTextColor={colors.placeholder}
                 style={{ flex: 1, color: colors.text, fontFamily: fontFamily.regular, fontSize: 14, paddingVertical: spacing.sm }}
               />
-              <Icon name="image" size={16} color={colors.icon} />
+              <Pressable accessibilityRole="button" accessibilityLabel={t('create.addImage')} onPress={() => attachOptionImage(index)}>
+                {option.image ? (
+                  <Image source={{ uri: option.image }} style={{ width: 22, height: 22, borderRadius: radius.sm }} contentFit="cover" />
+                ) : (
+                  <Icon name="image" size={16} color={colors.icon} />
+                )}
+              </Pressable>
               <Pressable accessibilityRole="button" onPress={() => removeOption(index)} disabled={options.length <= 2}>
                 <Icon name="trash" size={16} color={options.length <= 2 ? colors.textDisabled : colors.error} />
               </Pressable>

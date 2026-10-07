@@ -10,7 +10,7 @@ import { getFirebaseAuth } from '@/services/firebase';
 import { deleteSecret, getSecret, SECRET_KEYS, setSecret } from '@/services/secure-store';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { resetAppSession, setHasOnboarded, setIsUserLoggedIn } from '@/store/slices/app';
-import { clearUser, setUser, type UserProfile } from '@/store/slices/user';
+import { clearUser, setUser, type IdentityDocuments, type UserProfile } from '@/store/slices/user';
 import { getItem, removeItem, setItem } from '@/utils/storage';
 
 export type Account = {
@@ -23,6 +23,8 @@ export type SessionUser = {
   fullName: string;
   email: string;
   avatarUri?: string | null;
+  verified?: boolean;
+  documents?: IdentityDocuments;
 };
 
 type StoredAccount = {
@@ -41,9 +43,11 @@ type SessionContextValue = {
   completeOnboarding: () => Promise<void>;
   signUp: (account: Account) => Promise<void>;
   signIn: (email: string, password: string, remember: boolean) => Promise<SignInResult>;
+  signInAlpha: (account: Account) => Promise<void>;
   signInSocial: (user: SessionUser) => Promise<void>;
   completeSignIn: () => Promise<void>;
   signOut: () => Promise<void>;
+  deleteAccount: () => Promise<void>;
   updateProfile: (user: SessionUser) => Promise<void>;
   updatePassword: (currentPassword: string, nextPassword: string) => Promise<PasswordResult>;
   resetPassword: (email: string, nextPassword: string) => Promise<PasswordResult>;
@@ -56,12 +60,16 @@ function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
 }
 
-function toProfile(user: SessionUser, avatarUri: string | null): UserProfile {
+function toProfile(user: SessionUser, avatarUri: string | null, previous?: UserProfile | null): UserProfile {
+  const email = normalizeEmail(user.email);
+  const same = previous?.email === email;
   return {
     fullName: user.fullName.trim(),
-    email: normalizeEmail(user.email),
+    email,
     avatarUri,
     role: 'user',
+    verified: user.verified ?? (same ? Boolean(previous?.verified) : false),
+    documents: user.documents ?? (same ? previous?.documents : undefined),
   };
 }
 
@@ -119,7 +127,13 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   }, [dispatch]);
 
   const user: SessionUser | null = profile
-    ? { fullName: profile.fullName, email: profile.email, avatarUri: profile.avatarUri }
+    ? {
+        fullName: profile.fullName,
+        email: profile.email,
+        avatarUri: profile.avatarUri,
+        verified: profile.verified,
+        documents: profile.documents,
+      }
     : null;
   const hasOnboarded = reduxOnboarded || storedOnboarded;
 
@@ -142,12 +156,18 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 
   const establishSession = useCallback(
     async (next: SessionUser, token?: string | null) => {
-      const nextProfile = toProfile(next, next.avatarUri ?? profile?.avatarUri ?? null);
+      let nextProfile = toProfile(next, next.avatarUri ?? profile?.avatarUri ?? null, profile);
+      if (!nextProfile.verified) {
+        const saved = await getItem<{ email: string; verified: boolean; documents?: IdentityDocuments }>(STORAGE_KEYS.identity);
+        if (saved?.verified && saved.email === nextProfile.email) {
+          nextProfile = { ...nextProfile, verified: true, documents: saved.documents };
+        }
+      }
       dispatch(setUser(nextProfile));
       dispatch(setIsUserLoggedIn(true));
       if (token) await setSecret(SECRET_KEYS.authToken, token);
     },
-    [dispatch, profile?.avatarUri],
+    [dispatch, profile],
   );
 
   const signIn = useCallback(
@@ -198,6 +218,25 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     [account, establishSession, profile?.avatarUri],
   );
 
+  const signInAlpha = useCallback(
+    async (next: Account) => {
+      const stored: Account = {
+        fullName: next.fullName.trim(),
+        email: normalizeEmail(next.email),
+        password: next.password,
+      };
+      setAccount(stored);
+      await setSecret(SECRET_KEYS.accountPassword, stored.password);
+      await setItem(STORAGE_KEYS.account, { fullName: stored.fullName, email: stored.email });
+      await establishSession({
+        fullName: stored.fullName,
+        email: stored.email,
+        avatarUri: profile?.avatarUri,
+      });
+    },
+    [establishSession, profile?.avatarUri],
+  );
+
   const signInSocial = useCallback(
     async (next: SessionUser) => {
       await establishSession(next);
@@ -224,9 +263,17 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     await deleteSecret(SECRET_KEYS.authToken);
   }, [dispatch]);
 
+  const deleteAccount = useCallback(async () => {
+    await signOut();
+    setAccount(null);
+    await deleteSecret(SECRET_KEYS.accountPassword);
+    await removeItem(STORAGE_KEYS.account);
+    await removeItem(STORAGE_KEYS.identity);
+  }, [signOut]);
+
   const updateProfile = useCallback(
     async (next: SessionUser) => {
-      const nextProfile = toProfile(next, next.avatarUri ?? null);
+      const nextProfile = toProfile(next, next.avatarUri ?? null, profile);
       if (hasApi() && next.avatarUri && next.avatarUri !== profile?.avatarUri) {
         try {
           await uploadProfilePicture(next.avatarUri);
@@ -235,6 +282,13 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         }
       }
       dispatch(setUser(nextProfile));
+      if (nextProfile.verified && nextProfile.documents) {
+        await setItem(STORAGE_KEYS.identity, {
+          email: nextProfile.email,
+          verified: true,
+          documents: nextProfile.documents,
+        });
+      }
       if (account) {
         const storedAccount: Account = {
           ...account,
@@ -248,7 +302,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         });
       }
     },
-    [account, dispatch, profile?.avatarUri],
+    [account, dispatch, profile],
   );
 
   const updatePassword = useCallback(
@@ -291,9 +345,11 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       completeOnboarding,
       signUp,
       signIn,
+      signInAlpha,
       signInSocial,
       completeSignIn,
       signOut,
+      deleteAccount,
       updateProfile,
       updatePassword,
       resetPassword,
@@ -306,9 +362,11 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       completeOnboarding,
       signUp,
       signIn,
+      signInAlpha,
       signInSocial,
       completeSignIn,
       signOut,
+      deleteAccount,
       updateProfile,
       updatePassword,
       resetPassword,

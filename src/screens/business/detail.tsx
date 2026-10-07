@@ -18,6 +18,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useTranslation } from '@/hooks/use-translation';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { businessById, ensureThread } from '@/store/slices/world';
+import { visiblePosts } from '@/utils/feed';
 import { radius, spacing } from '@/theme';
 
 const tabs = ['listings', 'ratings', 'events', 'posts'] as const;
@@ -281,7 +282,7 @@ export function BusinessDetailScreen() {
 
         {tab === 'posts' ? (
           (() => {
-            const posts = world.posts.filter((post) => !post.official);
+            const posts = visiblePosts(world.posts, world.blockedAuthors, world.reportedPostIds).filter((post) => !post.official);
             if (posts.length === 0) {
               return <ThemedText variant="body">{t('business.emptyPosts')}</ThemedText>;
             }

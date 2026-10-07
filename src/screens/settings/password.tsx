@@ -64,7 +64,7 @@ export function ChangePasswordScreen() {
         icon="lock"
         error={errors.confirm}
       />
-      <PasswordRules includeUppercase value={next} />
+      <PasswordRules includeUppercase={false} value={next} />
     </Screen>
   );
 }
